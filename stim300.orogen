@@ -44,6 +44,9 @@ task_context "Task" do
     output_port('calibrated_sensors', '/base/samples/IMUSensors').
         doc 'provides timestamped IMUReading samples containing the calibrated sensor readings (accelerometers and gyroscopes).'
 
+    output_port('temp_x', '/base/Temperature').
+        doc 'provides timestamped Temperature information).'
+
     output_port('timestamp_estimator_status', 'aggregator::TimestampEstimatorStatus').
 	doc("Debug output of the TimestampEstimator")   
 

@@ -4,13 +4,13 @@
 
 using namespace stim300;
 
-Task::Task(std::string const& name)
-    : TaskBase(name)
+Task::Task(std::string const& name, TaskCore::TaskState initial_state)
+    : TaskBase(name, initial_state)
 {
 }
 
-Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
-    : TaskBase(name, engine)
+Task::Task(std::string const& name, RTT::ExecutionEngine* engine, TaskCore::TaskState initial_state)
+    : TaskBase(name, engine, initial_state)
 {
 }
 
@@ -55,13 +55,11 @@ bool Task::configureHook()
      if (acc_acc.compare(_acc_output.value()) == 0)
      {
 	 /** NOTHING BECAUSE THE DEFAULT VALUE IN THE FLASH MEMORY IS ACCELERATION **/
-	 /** IF THE FLASH MEMORY IN THE STIM300 IS CHANGE TO ANOTHER DEFAULT VALUE SOMETHING NEED TO BE WRITEN HERE **/
+	 /** IF THE FLASH MEMORY IN THE STIM300 IS CHANGED TO ANOTHER DEFAULT VALUE SOMETHING NEED TO BE WRITEN HERE **/
      }
      else if (acc_vel.compare(_acc_output.value()) == 0)
      {
 	 /** CHANGE THE OUTPUT TO INCREMENTAL_VELOCITY **/
-	 
-	 /** Change the configuration value **/
 	 stim300_driver.setAcctoIncrementalVelocity();
 	 
      }
@@ -84,14 +82,12 @@ void Task::updateHook()
     
     if (stim300_driver.getStatus())
     {
-// 	base::Time recvts = base::Time::now();
-// 
-// 	int packet_counter = m_driver->getPacketCounter();
-// 
-// 	base::Time ts = timestamp_estimator->update(recvts,packet_counter);
-//         timeout_counter = 0;
-	
-	base::Time ts = base::Time::now();
+ 	base::Time recvts = base::Time::now();
+ 
+ 	int packet_counter = stim300_driver.getPacketCounter();
+ 
+ 	base::Time ts = timestamp_estimator->update(recvts,packet_counter);
+        timeout_counter = 0;
 	
 	base::samples::IMUSensors sensors;
 
