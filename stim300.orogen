@@ -1,0 +1,65 @@
+name "stim300"
+# Optionally declare the version number
+# version "0.1"
+
+# If new data types need to be defined, they have to be put in a separate C++
+# header, and this header will be loaded here
+# import_types_from "stim300Type.hpp"
+using_library 'stim300'
+using_library "aggregator"
+
+# If the component/deployments use data types that are defined in other oroGen
+# projects, these projects should be imported there as well.
+import_types_from "base"
+import_types_from "aggregator"
+
+# Declare a new task context (i.e., a component)
+#
+# The corresponding C++ class can be edited in tasks/Task.hpp and
+# tasks/Task.cpp, and will be put in the stim300 namespace.
+task_context "Task" do
+
+    #******************************
+    #**** Component Properties ****
+    #******************************
+    property('port', '/std/string', "/dev/ttyUSB0").
+        doc 'the device port'
+
+    property('baudrate', 'int', 921600).
+        doc 'Baud rate to open the serial com_port and debug_port'
+
+    property('acc_output', '/std/string', "ACCELERATION").
+        doc 'Configure the type of output for the accelerometers'
+	doc 'This is because the STIM300 allows several outputs'
+	doc 'ACCELERATION for acceleration in m/s^2'
+	doc 'INCREMENTAL_VELOCITY for velocity in m/s/sample'
+
+    #******************************
+    #******* Input ports  *********
+    #******************************
+
+    #******************************
+    #******* Output Ports *********
+    #******************************
+    output_port('calibrated_sensors', '/base/samples/IMUSensors').
+        doc 'provides timestamped IMUReading samples containing the calibrated sensor readings (accelerometers and gyroscopes).'
+
+    output_port('timestamp_estimator_status', 'aggregator::TimestampEstimatorStatus').
+	doc("Debug output of the TimestampEstimator")   
+
+   #fd_driven
+
+end
+
+
+# Declares a deployment, i.e. an actual executable that contains various tasks.
+deployment "stim300_driver_test" do
+    # This is a test deployment that should not be installed
+    do_not_install
+
+    add_default_logger
+
+    task("stim300", "Task").
+	periodic (0.008)
+end
+
