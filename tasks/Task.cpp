@@ -60,8 +60,7 @@ bool Task::configureHook()
      else if (acc_vel.compare(_acc_output.value()) == 0)
      {
 	 /** CHANGE THE OUTPUT TO INCREMENTAL_VELOCITY **/
-	 stim300_driver.setAcctoIncrementalVelocity();
-	 
+	 stim300_driver.setAcctoIncrementalVelocity(); 
      }
      
      
@@ -77,7 +76,7 @@ bool Task::startHook()
 void Task::updateHook()
 {
     
-    stim300_driver.getInfo();
+//     stim300_driver.getInfo();
     stim300_driver.processPacket();
     
     if (stim300_driver.getStatus())
@@ -89,13 +88,44 @@ void Task::updateHook()
  	base::Time ts = timestamp_estimator->update(recvts,packet_counter);
         timeout_counter = 0;
 	
+	if (stim300_driver.getAccOutputType() == INCREMENTAL_VELOCITY)
+	{
+	    base::samples::RigidBodyState velocity;
+	    velocity.invalidate();
+	    velocity.time = ts;
+	    velocity.sourceFrame = "IMU Frame (X-Forward, Y-Left, Z-Up)";
+	    velocity.targetFrame = "World Frame (N-W-Up)";
+	    velocity.velocity = stim300_driver.getAccData();
+	    _incremental_velocity.write(velocity);
+	}
+	
 	base::samples::IMUSensors sensors;
 
 	sensors.time = ts;
-	sensors.acc = stim300_driver.getAccData();
-	sensors.gyro = stim300_driver.getGyroData();
+	if (stim300_driver.getAccOutputType() == ACCELERATION)
+	    sensors.acc = stim300_driver.getAccData();
+	else
+	    sensors.acc = stim300_driver.getInclData();
 	
-	_calibrated_sensors.write( sensors );
+	sensors.gyro = stim300_driver.getGyroData();
+	sensors.mag = base::Vector3d::Ones() * base::NaN<double>();
+	
+	_calibrated_sensors.write(sensors);
+	
+	stim300::Temperature tempSensor;	
+	
+	tempSensor.time = ts;
+	tempSensor.resize(3);
+	
+	base::Temperature tempValue;
+	tempSensor.temp[0] = tempValue.fromCelsius(stim300_driver.getTempDataX());
+	
+	tempSensor.temp[1] = tempValue.fromCelsius(stim300_driver.getTempDataY());
+
+	tempSensor.temp[2] = tempValue.fromCelsius(stim300_driver.getTempDataZ());
+	
+	_temp_sensors.write(tempSensor);
+	
     }
     
     TaskBase::updateHook();

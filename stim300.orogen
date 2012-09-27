@@ -4,9 +4,9 @@ name "stim300"
 
 # If new data types need to be defined, they have to be put in a separate C++
 # header, and this header will be loaded here
-# import_types_from "stim300Type.hpp"
 using_library 'stim300'
 using_library "aggregator"
+import_types_from "tasks/stim300Type.hpp"
 
 # If the component/deployments use data types that are defined in other oroGen
 # projects, these projects should be imported there as well.
@@ -42,9 +42,14 @@ task_context "Task" do
     #******* Output Ports *********
     #******************************
     output_port('calibrated_sensors', '/base/samples/IMUSensors').
-        doc 'provides timestamped IMUReading samples containing the calibrated sensor readings (accelerometers and gyroscopes).'
+        doc 'provides timestamped IMUReading samples containing the calibrated sensor readings (linear acceleration and angular velocity).'
+	doc 'The linear acceleration is given by the accelerometers in case the property acc_output is set to ACCELERATION.'
+	doc 'Otherwise, the linear acceleration is given by the inclinometers which has a range between +1 and -1 g.'
 
-    output_port('temp_x', '/base/Temperature').
+    output_port('incremental_velocity', '/base/samples/RigidBodyState').
+        doc 'provides timestamped incremental velocity (m/s/sample) given by the STIM300 in case the property acc_output is set to INCREMENTAL_VELOCITY).'
+
+    output_port('temp_sensors', '/stim300/Temperature').
         doc 'provides timestamped Temperature information).'
 
     output_port('timestamp_estimator_status', 'aggregator::TimestampEstimatorStatus').
@@ -63,6 +68,6 @@ deployment "stim300_driver_test" do
     add_default_logger
 
     task("stim300", "Task").
-	periodic (0.008)
+	periodic(0.008)
 end
 
