@@ -16,5 +16,5 @@
   <depend package="base/types" />
   <depend package="tools/logger" />
   <depend package="drivers/stim300" />
-  <depend package="drivers/orogen/aggregator" />
+  <depend package="drivers/orogen/aggregator" /> 
 </package>
