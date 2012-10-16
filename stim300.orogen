@@ -28,6 +28,9 @@ task_context "Task" do
     property('baudrate', 'int', 921600).
         doc 'Baud rate to open the serial com_port and debug_port'
 
+    property('timeout', 'int', 100).
+        doc 'the IO timeout in milliseconds'
+
     property('acc_output', '/std/string', "ACCELERATION").
         doc 'Configure the type of output for the accelerometers'
 	doc 'This is because the STIM300 allows several outputs'

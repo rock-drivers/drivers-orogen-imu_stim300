@@ -83,7 +83,10 @@ bool Task::startHook()
     RTT::extras::FileDescriptorActivity* activity =
         getActivity<RTT::extras::FileDescriptorActivity>();
     if (activity)
+    {
         activity->watch(stim300_driver.getFileDescriptor());
+	activity->setTimeout(_timeout);
+    }
     return true;
 }
 void Task::updateHook()
@@ -154,7 +157,11 @@ void Task::stopHook()
     RTT::extras::FileDescriptorActivity* activity =
         getActivity<RTT::extras::FileDescriptorActivity>();
     if (activity)
+    {
         activity->clearAllWatches();
+        //set timeout back so we don't timeout on the rtt's pipe
+	activity->setTimeout(0);
+    }
     
     stim300_driver.close();
     
