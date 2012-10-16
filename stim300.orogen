@@ -30,7 +30,7 @@ task_context "Task" do
 
     property('timeout', 'int', 8).
         doc 'the expected time (in milliseconds) to have a whole package in the fd'
-	doc 'by default 8 millisecond (0.008 seconds) which corresponds to 16Hz'
+	doc 'by default 8 millisecond (0.008 seconds) which corresponds to 125Hz'
 
     property('acc_output', '/std/string', "ACCELERATION").
         doc 'Configure the type of output for the accelerometers'
