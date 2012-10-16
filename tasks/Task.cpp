@@ -4,15 +4,20 @@
 
 using namespace stim300;
 
-Task::Task(std::string const& name, TaskCore::TaskState initial_state)
-    : TaskBase(name, initial_state)
+Task::Task(std::string const& name)
+    : TaskBase(name)
 {
 }
 
-Task::Task(std::string const& name, RTT::ExecutionEngine* engine, TaskCore::TaskState initial_state)
-    : TaskBase(name, engine, initial_state)
+Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
+    : TaskBase(name, engine)
 {
 }
+
+// Task::Task(std::string const& name, RTT::ExecutionEngine* engine, TaskCore::TaskState initial_state)
+//     : TaskBase(name, engine, initial_state)
+// {
+// }
 
 Task::~Task()
 {

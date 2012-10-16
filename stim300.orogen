@@ -55,7 +55,7 @@ task_context "Task" do
     output_port('timestamp_estimator_status', 'aggregator::TimestampEstimatorStatus').
 	doc("Debug output of the TimestampEstimator")   
 
-   #fd_driven
+    fd_driven
 
 end
 
@@ -67,7 +67,6 @@ deployment "stim300_driver_test" do
 
     add_default_logger
 
-    task("stim300", "Task").
-	periodic(0.008)
+    task("stim300", "Task")
 end
 

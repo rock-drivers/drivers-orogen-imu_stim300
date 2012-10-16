@@ -39,14 +39,21 @@ namespace stim300 {
          * \param name Name of the task. This name needs to be unique to make it identifiable via nameservices.
          * \param initial_state The initial TaskState of the TaskContext. Default is Stopped state.
          */
-	Task(std::string const& name = "stim300::Task", TaskCore::TaskState initial_state = Stopped);
-
-        /** TaskContext constructor for Task 
+	Task(std::string const& name = "stim300::Task");
+	
+	/** TaskContext constructor for Task 
          * \param name Name of the task. This name needs to be unique to make it identifiable for nameservices. 
          * \param engine The RTT Execution engine to be used for this task, which serialises the execution of all commands, programs, state machines and incoming events for a task. 
          * 
          */
-        Task(std::string const& name, RTT::ExecutionEngine* engine, TaskCore::TaskState initial_state = Stopped);
+        Task(std::string const& name, RTT::ExecutionEngine* engine);
+
+//         /** TaskContext constructor for Task 
+//          * \param name Name of the task. This name needs to be unique to make it identifiable for nameservices. 
+//          * \param engine The RTT Execution engine to be used for this task, which serialises the execution of all commands, programs, state machines and incoming events for a task. 
+//          * 
+//          */
+//         Task(std::string const& name, RTT::ExecutionEngine* engine, TaskCore::TaskState initial_state = Stopped);
 
         /** Default deconstructor of Task
          */
