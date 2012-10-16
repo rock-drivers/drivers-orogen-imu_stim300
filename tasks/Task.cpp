@@ -1,6 +1,7 @@
 /* Generated from orogen/lib/orogen/templates/tasks/Task.cpp */
 
 #include "Task.hpp"
+#include <rtt/extras/FileDescriptorActivity.hpp> //for the fd_driven
 
 using namespace stim300;
 
@@ -76,6 +77,13 @@ bool Task::startHook()
 {
     if (! TaskBase::startHook())
         return false;
+    
+    // Here, "fd" is the file descriptor of the underlying device
+    // it is usually created in configureHook()
+    RTT::extras::FileDescriptorActivity* activity =
+        getActivity<RTT::extras::FileDescriptorActivity>();
+    if (activity)
+        activity->watch(stim300_driver.getFileDescriptor());
     return true;
 }
 void Task::updateHook()
@@ -142,6 +150,11 @@ void Task::errorHook()
 void Task::stopHook()
 {
     TaskBase::stopHook();
+    
+    RTT::extras::FileDescriptorActivity* activity =
+        getActivity<RTT::extras::FileDescriptorActivity>();
+    if (activity)
+        activity->clearAllWatches();
     
     stim300_driver.close();
     
