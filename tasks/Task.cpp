@@ -50,6 +50,9 @@ bool Task::configureHook()
      * Default is 921600 **/
      stim300_driver.setBaudrate(_baudrate.value());
      
+     /** Set the packageTimeout **/
+     stim300_driver.setPackageTimeout((uint64_t)_timeout);
+     
      /** Open the port **/
      if (!stim300_driver.open(_port.value()))
      {
@@ -85,7 +88,7 @@ bool Task::startHook()
     if (activity)
     {
         activity->watch(stim300_driver.getFileDescriptor());
-	activity->setTimeout(_timeout);
+	activity->setTimeout(2*_timeout);
     }
     return true;
 }
