@@ -122,12 +122,17 @@ void Task::updateHook()
 
 	sensors.time = ts;
 	if (stim300_driver.getAccOutputType() == ACCELERATION)
+	{
 	    sensors.acc = stim300_driver.getAccData();
+	    sensors.mag = stim300_driver.getInclData();//!Short term solution: the mag carries inclinometers info (FINAL SOLUTION REQUIRES: e.g. to change IMUSensor base/types)
+	}
 	else
+	{	
 	    sensors.acc = stim300_driver.getInclData();
+            sensors.mag = base::Vector3d::Ones() * base::NaN<double>();
+	}
 	
 	sensors.gyro = stim300_driver.getGyroData();
-	sensors.mag = base::Vector3d::Ones() * base::NaN<double>();
 	
 	_calibrated_sensors.write(sensors);
 	
