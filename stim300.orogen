@@ -64,13 +64,3 @@ task_context "Task" do
 end
 
 
-# Declares a deployment, i.e. an actual executable that contains various tasks.
-deployment "stim300_driver_test" do
-    # This is a test deployment that should not be installed
-    do_not_install
-
-    add_default_logger
-
-    task("stim300", "Task")
-end
-

@@ -33,33 +33,32 @@ Task::~Task()
 
 bool Task::configureHook()
 {
-    
+
     std::string acc_acc ("ACCELERATION");
     std::string acc_vel ("INCREMENTAL_VELOCITY");
-     
+
     if (! TaskBase::configureHook())
         return false;
-    
+
     timestamp_estimator = new aggregator::TimestampEstimator(
 	base::Time::fromSeconds(20),
 	base::Time::fromSeconds(1.0 / stim300::STIM300Driver::DEFAULT_SAMPLING_FREQUENCY),
 	base::Time::fromSeconds(0),
 	INT_MAX);
-    
-    /** Set the baudrate to the value in the rock property *
-     * Default is 921600 **/
+
+    /** Set the baudrate to the value in the rock property */
      stim300_driver.setBaudrate(_baudrate.value());
-     
+
      /** Set the packageTimeout **/
      stim300_driver.setPackageTimeout((uint64_t)_timeout);
-     
+
      /** Open the port **/
      if (!stim300_driver.open(_port.value()))
      {
 	std::cerr << "Error opening device '" << _port.value() << "'" << std::endl;
         return false;
      }
-     
+
      /** Set the output format for the accelerometers **/
      if (acc_acc.compare(_acc_output.value()) == 0)
      {
@@ -88,7 +87,7 @@ bool Task::startHook()
     if (activity)
     {
         activity->watch(stim300_driver.getFileDescriptor());
-	activity->setTimeout(2*_timeout);
+	activity->setTimeout(_timeout);
     }
     return true;
 }
@@ -97,13 +96,14 @@ void Task::updateHook()
     
 //     stim300_driver.getInfo();
     stim300_driver.processPacket();
-    
+
     if (stim300_driver.getStatus())
     {
- 	base::Time recvts = base::Time::now();
- 
+        /** Time is current time minus the latency **/
+ 	base::Time recvts = base::Time::now() - base::Time::fromMicroseconds(stim300_driver.getPacketLatency());
+
  	int packet_counter = stim300_driver.getPacketCounter();
- 
+
  	base::Time ts = timestamp_estimator->update(recvts,packet_counter);
         timeout_counter = 0;
 	
@@ -142,16 +142,19 @@ void Task::updateHook()
 	tempSensor.resize(3);
 	
 	base::Temperature tempValue;
-	tempSensor.temp[0] = tempValue.fromCelsius(stim300_driver.getTempDataX());
+	tempSensor.temp[0] = tempValue.fromCelsius(stim300_driver.getGyroTempDataX());
 	
-	tempSensor.temp[1] = tempValue.fromCelsius(stim300_driver.getTempDataY());
+	tempSensor.temp[1] = tempValue.fromCelsius(stim300_driver.getGyroTempDataY());
 
-	tempSensor.temp[2] = tempValue.fromCelsius(stim300_driver.getTempDataZ());
+	tempSensor.temp[2] = tempValue.fromCelsius(stim300_driver.getGyroTempDataZ());
 	
 	_temp_sensors.write(tempSensor);
+
+        if (!stim300_driver.getChecksumStatus())
+            RTT::log(RTT::Fatal)<<"[STIM300] Datagram Checksum ERROR."<<RTT::endlog();
 	
     }
-    
+
     TaskBase::updateHook();
 }
 void Task::errorHook()
@@ -161,7 +164,7 @@ void Task::errorHook()
 void Task::stopHook()
 {
     TaskBase::stopHook();
-    
+
     RTT::extras::FileDescriptorActivity* activity =
         getActivity<RTT::extras::FileDescriptorActivity>();
     if (activity)
@@ -170,17 +173,17 @@ void Task::stopHook()
         //set timeout back so we don't timeout on the rtt's pipe
 	activity->setTimeout(0);
     }
-    
+
     stim300_driver.close();
-    
+
     timestamp_estimator->reset();
 }
 void Task::cleanupHook()
 {
     TaskBase::cleanupHook();
-    
+
     stim300_driver.close();
-    
+
     delete timestamp_estimator;
     timestamp_estimator = NULL;
 }

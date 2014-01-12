@@ -10,11 +10,12 @@ ENV['PKG_CONFIG_PATH'] = "#{File.expand_path("..", File.dirname(__FILE__))}/buil
 
 Orocos.initialize
 
-Orocos::Process.run 'stim300_driver_test' do |p|
-    driver = p.task 'stim300'
+Orocos::Process.run 'stim300::Task' => 'stim300' do
+    driver = Orocos.name_service.get 'stim300'
     Orocos.log_all_ports
 
     driver.port = ARGV[0]
+    driver.timeout = 2
     driver.acc_output = "ACCELERATION "
 #     driver.acc_output = "INCREMENTAL_VELOCITY"
     driver.configure

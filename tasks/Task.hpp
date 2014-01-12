@@ -6,10 +6,10 @@
 
 #include <stim300/stim300.hpp>
 #include <aggregator/TimestampEstimator.hpp>
+#include <rtt/extras/FileDescriptorActivity.hpp>
 #include "stim300/TaskBase.hpp"
 
 namespace stim300 {
-    
 
     /*! \class Task 
      * \brief The task context provides and requires services. It uses an ExecutionEngine to perform its functions.
