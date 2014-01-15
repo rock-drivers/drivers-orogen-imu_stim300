@@ -29,6 +29,9 @@ task_context "Task" do
     property('port', '/std/string', "/dev/ttyUSB0").
         doc 'the device port'
 
+    property('revision', 'stim300::FIRMWARE_REVISIONS').
+        doc 'Firmware revision'
+
     property('baudrate', 'int', 921600).
         doc 'Baud rate to open the serial com_port and debug_port'
 
@@ -83,14 +86,8 @@ task_context "Task" do
     output_port('orientation_samples_out', '/base/samples/RigidBodyState').
         doc 'provides timestamped IMU orientation samples containing the quaternion.'
 
-    output_port('temp_gyro', '/stim300/Temperature').
+    output_port('temp_sensors', '/stim300/Temperature').
         doc 'provides timestamped Temperature information for gyros).'
-
-    output_port('temp_incl', '/stim300/Temperature').
-        doc 'provides timestamped Temperature information for inclinometers).'
-
-    output_port('temp_acc', '/stim300/Temperature').
-        doc 'provides timestamped Temperature information for accelerometers).'
 
     output_port('timestamp_estimator_status', 'aggregator::TimestampEstimatorStatus').
 	doc("Debug output of the TimestampEstimator")

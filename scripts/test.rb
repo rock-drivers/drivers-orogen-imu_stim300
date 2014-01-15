@@ -15,6 +15,7 @@ Orocos::Process.run 'stim300::Task' => 'stim300' do
     Orocos.log_all_ports
 
     driver.port = ARGV[0]
+    driver.revision = 'REV_D'
     driver.timeout = 2
     driver.configure
     driver.start

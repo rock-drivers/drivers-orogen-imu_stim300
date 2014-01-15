@@ -7,6 +7,8 @@
 
 namespace stim300 {
 
+    enum FIRMWARE_REVISIONS{REV_A, REV_B, REV_C, REV_D};
+
     /** STIM300 temperature sensor **/
     struct Temperature
     {

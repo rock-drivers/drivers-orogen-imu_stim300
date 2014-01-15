@@ -5,8 +5,13 @@
 
 #include "stim300/TaskBase.hpp"
 
-#include <stim300/stim300.hpp> /** Driver library **/
+/** Driver library **/
+#include <stim300/Stim300Base.hpp>
+#include <stim300/Stim300RevB.hpp>
+#include <stim300/Stim300RevD.hpp>
+
 #include <quater_ikf/Ikf.hpp> /** IKF filter*/
+
 #include <aggregator/TimestampEstimator.hpp>
 #include <rtt/extras/FileDescriptorActivity.hpp>
 
@@ -64,7 +69,7 @@ namespace stim300 {
 
         /** Driver variables **/
 	int timeout_counter;
-	stim300::STIM300Driver stim300_driver;
+	stim300::Stim300Base *stim300_driver;
 	aggregator::TimestampEstimator* timestamp_estimator;
 
         /** Initial values of Accelerometers/Inclinometers for Pitch and Roll calculation */

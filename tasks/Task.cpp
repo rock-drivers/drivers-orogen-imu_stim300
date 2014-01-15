@@ -34,22 +34,30 @@ bool Task::configureHook()
 
     timestamp_estimator = new aggregator::TimestampEstimator(
 	base::Time::fromSeconds(20),
-	base::Time::fromSeconds(1.0 / stim300::STIM300Driver::DEFAULT_SAMPLING_FREQUENCY),
+	base::Time::fromSeconds(1.0 / stim300::DEFAULT_SAMPLING_FREQUENCY),
 	base::Time::fromSeconds(0),
 	INT_MAX);
 
+    /** Set the driver **/
+    if (_revision.value() == stim300::REV_B)
+        stim300_driver = new stim300::Stim300RevB();
+    else if (_revision.value() == stim300::REV_D)
+        stim300_driver = new stim300::Stim300RevD();
+    else
+        throw std::runtime_error("STIM300 Firmware Revision NO implemented");
+
     /** Set the baudrate to the value in the rock property */
-     stim300_driver.setBaudrate(_baudrate.value());
+    stim300_driver->setBaudrate(_baudrate.value());
 
-     /** Set the packageTimeout **/
-     stim300_driver.setPackageTimeout((uint64_t)_timeout);
+    /** Set the packageTimeout **/
+    stim300_driver->setPackageTimeout((uint64_t)_timeout);
 
-     /** Open the port **/
-     if (!stim300_driver.open(_port.value()))
-     {
-	std::cerr << "Error opening device '" << _port.value() << "'" << std::endl;
+    /** Open the port **/
+    if (!stim300_driver->open(_port.value()))
+    {
+        std::cerr << "Error opening device '" << _port.value() << "'" << std::endl;
         return false;
-     }
+    }
 
    return true;
 }
@@ -64,7 +72,7 @@ bool Task::startHook()
         getActivity<RTT::extras::FileDescriptorActivity>();
     if (activity)
     {
-        activity->watch(stim300_driver.getFileDescriptor());
+        activity->watch(stim300_driver->getFileDescriptor());
 	activity->setTimeout(_timeout);
     }
     return true;
@@ -72,48 +80,38 @@ bool Task::startHook()
 void Task::updateHook()
 {
 
-//     stim300_driver.getInfo();
-    stim300_driver.processPacket();
+    //stim300_driver->printInfo();
+    stim300_driver->processPacket();
 
-    if (stim300_driver.getStatus())
+    if (stim300_driver->getStatus())
     {
         /** Time is current time minus the latency **/
- 	base::Time recvts = base::Time::now() - base::Time::fromMicroseconds(stim300_driver.getPacketLatency());
+ 	base::Time recvts = base::Time::now() - base::Time::fromMicroseconds(stim300_driver->getPacketLatency());
 
- 	int packet_counter = stim300_driver.getPacketCounter();
+ 	int packet_counter = stim300_driver->getPacketCounter();
 
  	base::Time ts = timestamp_estimator->update(recvts,packet_counter);
 
 	base::samples::IMUSensors sensors;
 
 	sensors.time = ts;
-        sensors.acc = stim300_driver.getAccData();
-        sensors.mag = stim300_driver.getInclData();//!Short term solution: the mag carries inclinometers info (FINAL SOLUTION REQUIRES: e.g. to change IMUSensor base/types)
+        sensors.acc = stim300_driver->getAccData();
+        sensors.mag = stim300_driver->getInclData();//!Short term solution: the mag carries inclinometers info (FINAL SOLUTION REQUIRES: e.g. to change IMUSensor base/types)
 	
-	sensors.gyro = stim300_driver.getGyroData();
+	sensors.gyro = stim300_driver->getGyroData();
 	
 	_calibrated_sensors.write(sensors);
 	
 	
 	stim300::Temperature tempSensor;
 	tempSensor.time = ts;
-	tempSensor.resize(3);
-        for (size_t i=0; i<tempSensor.size(); ++i)
-            tempSensor.temp[i] = base::Temperature::fromCelsius(stim300_driver.getGyroTempData()[i]);
-	_temp_gyro.write(tempSensor);
-
-        /** Have a look to this define in the driver library **/
-#if STIM300_REV > 'C'
-        for (size_t i=0; i<tempSensor.size(); ++i)
-            tempSensor.temp[i] = base::Temperature::fromCelsius(stim300_driver.getAccTempData()[i]);
-	_temp_acc.write(tempSensor);
+	tempSensor.resize(stim300_driver->getTempData().size());
 
         for (size_t i=0; i<tempSensor.size(); ++i)
-            tempSensor.temp[i] = base::Temperature::fromCelsius(stim300_driver.getInclTempData()[i]);
-	_temp_incl.write(tempSensor);
-#endif
+            tempSensor.temp[i] = base::Temperature::fromCelsius(stim300_driver->getTempData()[i]);
+	_temp_sensors.write(tempSensor);
 
-        if (!stim300_driver.getChecksumStatus())
+        if (!stim300_driver->getChecksumStatus())
             RTT::log(RTT::Fatal)<<"[STIM300] Datagram Checksum ERROR."<<RTT::endlog();
 	
     }
@@ -137,7 +135,7 @@ void Task::stopHook()
 	activity->setTimeout(0);
     }
 
-    stim300_driver.close();
+    stim300_driver->close();
 
     timestamp_estimator->reset();
 }
@@ -145,7 +143,8 @@ void Task::cleanupHook()
 {
     TaskBase::cleanupHook();
 
-    stim300_driver.close();
+    stim300_driver->close();
+    delete stim300_driver;
 
     delete timestamp_estimator;
     timestamp_estimator = NULL;
