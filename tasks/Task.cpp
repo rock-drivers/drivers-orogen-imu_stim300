@@ -15,11 +15,6 @@ Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
 {
 }
 
-// Task::Task(std::string const& name, RTT::ExecutionEngine* engine, TaskCore::TaskState initial_state)
-//     : TaskBase(name, engine, initial_state)
-// {
-// }
-
 Task::~Task()
 {
     delete timestamp_estimator;
@@ -33,9 +28,6 @@ Task::~Task()
 
 bool Task::configureHook()
 {
-
-    std::string acc_acc ("ACCELERATION");
-    std::string acc_vel ("INCREMENTAL_VELOCITY");
 
     if (! TaskBase::configureHook())
         return false;
@@ -59,21 +51,7 @@ bool Task::configureHook()
         return false;
      }
 
-     /** Set the output format for the accelerometers **/
-     if (acc_acc.compare(_acc_output.value()) == 0)
-     {
-	 /** NOTHING BECAUSE THE DEFAULT VALUE IN THE FLASH MEMORY IS ACCELERATION **/
-	 /** IF THE FLASH MEMORY IN THE STIM300 IS CHANGED TO ANOTHER DEFAULT VALUE SOMETHING NEED TO BE WRITEN HERE **/
-     }
-     else if (acc_vel.compare(_acc_output.value()) == 0)
-     {
-	 /** CHANGE THE OUTPUT TO INCREMENTAL_VELOCITY **/
-	 stim300_driver.setAcctoIncrementalVelocity(); 
-     }
-     
-     
-    
-    return true;
+   return true;
 }
 bool Task::startHook()
 {
@@ -93,7 +71,7 @@ bool Task::startHook()
 }
 void Task::updateHook()
 {
-    
+
 //     stim300_driver.getInfo();
     stim300_driver.processPacket();
 
@@ -105,50 +83,35 @@ void Task::updateHook()
  	int packet_counter = stim300_driver.getPacketCounter();
 
  	base::Time ts = timestamp_estimator->update(recvts,packet_counter);
-        timeout_counter = 0;
-	
-	if (stim300_driver.getAccOutputType() == INCREMENTAL_VELOCITY)
-	{
-	    base::samples::RigidBodyState velocity;
-	    velocity.invalidate();
-	    velocity.time = ts;
-	    velocity.sourceFrame = "IMU Frame (X-Forward, Y-Left, Z-Up)";
-	    velocity.targetFrame = "World Frame (N-W-Up)";
-	    velocity.velocity = stim300_driver.getAccData();
-	    _incremental_velocity.write(velocity);
-	}
-	
+
 	base::samples::IMUSensors sensors;
 
 	sensors.time = ts;
-	if (stim300_driver.getAccOutputType() == ACCELERATION)
-	{
-	    sensors.acc = stim300_driver.getAccData();
-	    sensors.mag = stim300_driver.getInclData();//!Short term solution: the mag carries inclinometers info (FINAL SOLUTION REQUIRES: e.g. to change IMUSensor base/types)
-	}
-	else
-	{	
-	    sensors.acc = stim300_driver.getInclData();
-            sensors.mag = base::Vector3d::Ones() * base::NaN<double>();
-	}
+        sensors.acc = stim300_driver.getAccData();
+        sensors.mag = stim300_driver.getInclData();//!Short term solution: the mag carries inclinometers info (FINAL SOLUTION REQUIRES: e.g. to change IMUSensor base/types)
 	
 	sensors.gyro = stim300_driver.getGyroData();
 	
 	_calibrated_sensors.write(sensors);
 	
-	stim300::Temperature tempSensor;	
 	
+	stim300::Temperature tempSensor;
 	tempSensor.time = ts;
 	tempSensor.resize(3);
-	
-	base::Temperature tempValue;
-	tempSensor.temp[0] = tempValue.fromCelsius(stim300_driver.getGyroTempDataX());
-	
-	tempSensor.temp[1] = tempValue.fromCelsius(stim300_driver.getGyroTempDataY());
+        for (size_t i=0; i<tempSensor.size(); ++i)
+            tempSensor.temp[i] = base::Temperature::fromCelsius(stim300_driver.getGyroTempData()[i]);
+	_temp_gyro.write(tempSensor);
 
-	tempSensor.temp[2] = tempValue.fromCelsius(stim300_driver.getGyroTempDataZ());
-	
-	_temp_sensors.write(tempSensor);
+        /** Have a look to this define in the driver library **/
+#if STIM300_REV > 'C'
+        for (size_t i=0; i<tempSensor.size(); ++i)
+            tempSensor.temp[i] = base::Temperature::fromCelsius(stim300_driver.getAccTempData()[i]);
+	_temp_acc.write(tempSensor);
+
+        for (size_t i=0; i<tempSensor.size(); ++i)
+            tempSensor.temp[i] = base::Temperature::fromCelsius(stim300_driver.getInclTempData()[i]);
+	_temp_incl.write(tempSensor);
+#endif
 
         if (!stim300_driver.getChecksumStatus())
             RTT::log(RTT::Fatal)<<"[STIM300] Datagram Checksum ERROR."<<RTT::endlog();

@@ -5,8 +5,9 @@ name "stim300"
 # If new data types need to be defined, they have to be put in a separate C++
 # header, and this header will be loaded here
 using_library 'stim300'
+using_library 'quater_ikf'
 using_library "aggregator"
-import_types_from "tasks/stim300Type.hpp"
+import_types_from "stim300Types.hpp"
 
 # If the component/deployments use data types that are defined in other oroGen
 # projects, these projects should be imported there as well.
@@ -18,10 +19,13 @@ import_types_from "aggregator"
 # The corresponding C++ class can be edited in tasks/Task.hpp and
 # tasks/Task.cpp, and will be put in the stim300 namespace.
 task_context "Task" do
+    # This is the default from now on, and should not be removed. Rock will
+    # transition to a setup where all components use a configuration step.
+    needs_configuration
 
-    #******************************
-    #**** Component Properties ****
-    #******************************
+    #***************************
+    #**** Driver Properties ****
+    #***************************
     property('port', '/std/string', "/dev/ttyUSB0").
         doc 'the device port'
 
@@ -29,14 +33,40 @@ task_context "Task" do
         doc 'Baud rate to open the serial com_port and debug_port'
 
     property('timeout', 'int', 8).
-        doc 'the expected time (in milliseconds) to have a whole package in the fd'
-	doc 'by default 8 millisecond (0.008 seconds) which corresponds to 125Hz'
+        doc 'the expected time (in milliseconds) to have a whole package in the fd'+
+	'by default 8 millisecond (0.008 seconds) which corresponds to 125Hz.'
 
-    property('acc_output', '/std/string', "ACCELERATION").
-        doc 'Configure the type of output for the accelerometers'
-	doc 'This is because the STIM300 allows several outputs'
-	doc 'ACCELERATION for acceleration in m/s^2'
-	doc 'INCREMENTAL_VELOCITY for velocity in m/s/sample'
+    property('use_filter', 'bool', true).
+        doc 'set to true to active the attitude estimation filter, set false otherwise.'+
+        'In true mode inertial sensors output port will be compensated and calibrated values'+
+        'In false mode inertial sensors output will be only calibrated values'
+
+    #****************************
+    #**** Filter Properties *****
+    #****************************
+    property('filter_configuration', 'stim300/FilterConfiguration').
+        doc 'General configuration values to run the task'
+
+    #*********************************************
+    #**** Inertial Measurement Unit Properties ***
+    #*********************************************
+    property('inertial_noise','stim300/InertialNoiseParameters').
+        doc 'Inertial Sensors property.'
+
+    #****************************
+    #**** Adaptive Properties ***
+    #****************************
+    property('adaptive_config_acc', 'stim300/AdaptiveAttitudeConfig').
+        doc 'Adaptive estimation of external acceleration.'
+
+    property('adaptive_config_inc', 'stim300/AdaptiveAttitudeConfig').
+        doc 'Adaptive estimation of external inclinometers.'
+
+    #******************************
+    #**** Location Properties *****
+    #******************************
+    property('location',"stim300/LocationConfiguration").
+        doc 'Localization properties related to the geographic place (i.e.: latitude, longitude, magnetic declination).'
 
     #******************************
     #******* Input ports  *********
@@ -46,18 +76,24 @@ task_context "Task" do
     #******* Output Ports *********
     #******************************
     output_port('calibrated_sensors', '/base/samples/IMUSensors').
-        doc 'provides timestamped IMUReading samples containing the calibrated sensor readings (linear acceleration and angular velocity).'
-	doc 'The linear acceleration is given by the accelerometers in case the property acc_output is set to ACCELERATION.'
-	doc 'Otherwise, the linear acceleration is given by the inclinometers which has a range between +1 and -1 g.'
+        doc 'provides timestamped IMUReading samples containing the calibrated or compensated sensor readings depending on the mode'+
+        'Calibrated values are temperature corrected as the device reports the values (linear acceleration and angular velocity).'+
+        'Compensated values are Earth gravity/rotation and bias compensated angular velocity and linear acceleration from the filter.'
 
-    output_port('incremental_velocity', '/base/samples/RigidBodyState').
-        doc 'provides timestamped incremental velocity (m/s/sample) given by the STIM300 in case the property acc_output is set to INCREMENTAL_VELOCITY).'
+    output_port('orientation_samples_out', '/base/samples/RigidBodyState').
+        doc 'provides timestamped IMU orientation samples containing the quaternion.'
 
-    output_port('temp_sensors', '/stim300/Temperature').
-        doc 'provides timestamped Temperature information).'
+    output_port('temp_gyro', '/stim300/Temperature').
+        doc 'provides timestamped Temperature information for gyros).'
+
+    output_port('temp_incl', '/stim300/Temperature').
+        doc 'provides timestamped Temperature information for inclinometers).'
+
+    output_port('temp_acc', '/stim300/Temperature').
+        doc 'provides timestamped Temperature information for accelerometers).'
 
     output_port('timestamp_estimator_status', 'aggregator::TimestampEstimatorStatus').
-	doc("Debug output of the TimestampEstimator")   
+	doc("Debug output of the TimestampEstimator")
 
     fd_driven
 

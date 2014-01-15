@@ -16,8 +16,6 @@ Orocos::Process.run 'stim300::Task' => 'stim300' do
 
     driver.port = ARGV[0]
     driver.timeout = 2
-    driver.acc_output = "ACCELERATION "
-#     driver.acc_output = "INCREMENTAL_VELOCITY"
     driver.configure
     driver.start
 

@@ -3,11 +3,12 @@
 #ifndef STIM300_TASK_TASK_HPP
 #define STIM300_TASK_TASK_HPP
 
+#include "stim300/TaskBase.hpp"
 
-#include <stim300/stim300.hpp>
+#include <stim300/stim300.hpp> /** Driver library **/
+#include <quater_ikf/Ikf.hpp> /** IKF filter*/
 #include <aggregator/TimestampEstimator.hpp>
 #include <rtt/extras/FileDescriptorActivity.hpp>
-#include "stim300/TaskBase.hpp"
 
 namespace stim300 {
 
@@ -29,17 +30,64 @@ namespace stim300 {
     {
 	friend class TaskBase;
     protected:
-	
+
+        /******************************/
+        /*** Control Flow Variables ***/
+        /******************************/
+
+	/** Initial Attitude **/
+	bool initAttitude;
+
+        /** Index for initializing attitude **/
+        unsigned int init_leveling_idx;
+
+        /**************************/
+        /*** Property Variables ***/
+        /**************************/
+
+        /** Filter configuration values **/
+        FilterConfiguration config;
+
+        /** Inertial noise parameters **/
+        InertialNoiseParameters inertialnoise;
+
+        /** Adaptive Measurement Configuration **/
+        AdaptiveAttitudeConfig adaptiveconfigAcc;
+        AdaptiveAttitudeConfig adaptiveconfigInc;
+
+        /** Location configuration variables **/
+        LocationConfiguration location;
+
+        /**************************/
+        /*** Internal Variables ***/
+        /**************************/
+
+        /** Driver variables **/
 	int timeout_counter;
 	stim300::STIM300Driver stim300_driver;
 	aggregator::TimestampEstimator* timestamp_estimator;
+
+        /** Initial values of Accelerometers/Inclinometers for Pitch and Roll calculation */
+	Eigen::Matrix <double, 3, Eigen::Dynamic> init_leveling_samples;
+
+        filter::Ikf<double, true, true> myfilter; /** The adaptive Indirect Kalman filter */
+
+        Eigen::Quaterniond deltaquat, deltahead, attitude;
+
+        Eigen::Matrix4d oldomega;
+
+        /***************************/
+        /** Output port variables **/
+        /***************************/
+
+        base::samples::RigidBodyState orientationOut;
 
     public:
         /** TaskContext constructor for Task
          * \param name Name of the task. This name needs to be unique to make it identifiable via nameservices.
          * \param initial_state The initial TaskState of the TaskContext. Default is Stopped state.
          */
-	Task(std::string const& name = "stim300::Task");
+         Task(std::string const& name = "stim300::Task");
 	
 	/** TaskContext constructor for Task 
          * \param name Name of the task. This name needs to be unique to make it identifiable for nameservices. 
@@ -47,13 +95,6 @@ namespace stim300 {
          * 
          */
         Task(std::string const& name, RTT::ExecutionEngine* engine);
-
-//         /** TaskContext constructor for Task 
-//          * \param name Name of the task. This name needs to be unique to make it identifiable for nameservices. 
-//          * \param engine The RTT Execution engine to be used for this task, which serialises the execution of all commands, programs, state machines and incoming events for a task. 
-//          * 
-//          */
-//         Task(std::string const& name, RTT::ExecutionEngine* engine, TaskCore::TaskState initial_state = Stopped);
 
         /** Default deconstructor of Task
          */

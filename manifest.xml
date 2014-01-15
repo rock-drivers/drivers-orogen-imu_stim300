@@ -1,5 +1,5 @@
 <package>
-  <description brief="Orogen component to use the   Driver class for the STIM300 Inertial Measurement Unit (IMU)">
+  <description brief="Orogen component to use the Driver class for the STIM300 Inertial Measurement Unit (IMU)">
   Orogen component to use the Driver class for the STIM300 Inertial Measurement Unit (IMU)
   </description>
   <author>Javier Hidalgo Carrio/javier.hidalgo_carrio@dfki.de</author>
@@ -16,5 +16,6 @@
   <depend package="base/types" />
   <depend package="tools/logger" />
   <depend package="drivers/stim300" />
+  <depend package="slam/quater_ikf" /> 
   <depend package="drivers/orogen/aggregator" /> 
 </package>
