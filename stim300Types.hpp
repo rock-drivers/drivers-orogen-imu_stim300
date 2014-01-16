@@ -38,11 +38,11 @@ namespace stim300 {
                                                     //some models as WGS-84 ellipsoid Earth.
                                                     //It will use inclinometers in case use_inclinometers_leveling is true
                                                     //and accelerometers otherwise.
-        bool use_inclinometers_leveling;//Some IMU provide inclinometers as fast and more accurate solution for initial leveling.
+        bool use_inclinometers;//Some IMU provide inclinometers as fast and more accurate solution for initial leveling.
                                 //Set True or False to use inclinometers values or not.
                                 //Note: Check if the IMU has inclinometers information.
 
-        bool use_magnetometers_heading;// Some IMUS provides Magnetic information.
+        bool use_magnetometers;// Some IMUS provides Magnetic information.
                                     // Set to true or false in case you want to correct heading with magnetometers
 
         unsigned int init_leveling_samples;//Samples to compute the initial leveling of the imu in order to find the gravity vector.

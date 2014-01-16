@@ -17,6 +17,21 @@
 
 namespace stim300 {
 
+    /** WGS-84 ellipsoid constants (Nominal Gravity Model and Earth angular velocity) **/
+    static const int Re = 6378137; /** Equatorial radius in meters **/
+    static const int Rp = 6378137; /** Polar radius in meters **/
+    static const double ECC = 0.0818191908426; /** First eccentricity **/
+    static const double GRAVITY = 9.79766542; /** Mean value of gravity value in m/s^2 **/
+    static const double GWGS0 = 9.7803267714; /** Gravity value at the equator in m/s^2 **/
+    static const double GWGS1 = 0.00193185138639; /** Gravity formula constant **/
+    static const double EARTHW = 7.292115e-05; /** Earth angular velocity in rad/s **/
+
+     enum CONST {
+            IKFSTATEVECTORSIZE = filter::Ikf<double, true, true>::IKFSTATEVECTORSIZE
+    };
+
+    static const double GRAVITY_MARGING = 0.3; /** Accepted error for the gravity value **/
+
     /*! \class Task 
      * \brief The task context provides and requires services. It uses an ExecutionEngine to perform its functions.
      * Essential interfaces are operations, data flow ports and properties. These interfaces have been defined using the oroGen specification.
@@ -34,6 +49,7 @@ namespace stim300 {
     class Task : public TaskBase
     {
 	friend class TaskBase;
+
     protected:
 
         /******************************/
@@ -66,6 +82,8 @@ namespace stim300 {
         /**************************/
         /*** Internal Variables ***/
         /**************************/
+
+        base::Time prev_ts;
 
         /** Driver variables **/
 	int timeout_counter;
@@ -162,6 +180,101 @@ namespace stim300 {
          * before calling start() again.
          */
         void cleanupHook();
+
+
+        /** Performs heading independent integration
+        */
+        Eigen::Quaternion<double> deltaHeading(const Eigen::Vector3d &angvelo, Eigen::Matrix4d &oldomega, const double delta_t);
+
+
+        /** @brief Port out the values
+	 */
+        void outputPortSamples(stim300::Stim300Base *driver, filter::Ikf<double, true, true> &myfilter, const base::samples::IMUSensors &imusamples);
+
+        /**
+	* @brief This computes the theoretical gravity value according to the WGS-84 ellipsoid Earth model.
+	*
+	* @author Javier Hidalgo Carrio.
+	*
+	* @param[in] latitude double the latitude value in radian
+	* @param[in] altitude double with the altitude value in meters
+	*
+	* @return double. the theoretical value of the local gravity
+	*
+	*/
+	static double GravityModel(double latitude, double altitude)
+	{
+	    double g; /** g magnitude at zero altitude **/
+
+	    /** Nominal Gravity model **/
+	    g = GWGS0*((1+GWGS1*pow(sin(latitude),2))/sqrt(1-pow(ECC,2)*pow(sin(latitude),2)));
+
+	    /** Gravity affects by the altitude (aprox the value r = Re **/
+	    g = g*pow(Re/(Re+altitude), 2);
+
+            #ifdef DEBUG_PRINTS
+	    std::cout<<"[UTIL_CLASS] Theoretical gravity for this location (WGS-84 ellipsoid model): "<< g<<" [m/s^2]\n";
+            #endif
+
+	    return g;
+	};
+	
+	/**
+	* @brief Subtract the Earth rotation from the gyroscopes readout
+	*
+	* This function computes the subtraction of the rotation of the Earth (EARTHW)
+	* from the gyroscope values. This function uses quaternion of transformation from
+	* the geographici to body frame and the latitude in radians.
+	*
+	* @author Javier Hidalgo Carrio.
+	*
+	* @param[in, out] *u pointer to angular velocity in body frame
+	* @param[in] *q quaternion from body to geographic(world) frame v_body = q_body_2_geo * v_geo
+	* @param[in] latitude location latitude angle in radians
+	*
+	* @return void
+	*
+	*/
+	static void SubtractEarthRotation(Eigen::Vector3d &u, const Eigen::Quaterniond &q, const double latitude)
+	{
+	    Eigen::Vector3d v (EARTHW*cos(latitude), 0, EARTHW*sin(latitude)); /** vector of earth rotation components expressed in the geographic frame according to the latitude **/
+
+	    /** Compute the v vector expressed in the body frame **/
+	    v = q * v;
+
+	    #ifdef DEBUG_PRINTS
+	    std::cout<<"[UTIL_CLASS] Earth Rotation:"<<v<<"\n";
+	    #endif
+
+	    /** Subtract the earth rotation to the vector of inputs (u = u-v**/
+	    u  = u - v;
+
+	    return;
+	};
+
+        /**
+	* @brief Delta quaternion rotation. Integration of small (given by the current angular velo) variation in attitude.
+	*/
+        static Eigen::Quaternion<double> deltaQuaternion(const Eigen::Vector3d &angvelo, const Eigen::Matrix4d &oldomega4, const Eigen::Matrix4d &omega4, const double dt)
+        {
+            Eigen::Vector4d quat;
+            quat<< 1.00, 0.00, 0.00, 0.00; /**Identity quaternion */
+
+            /** Third-order gyroscopes integration accuracy **/
+            quat = (Eigen::Matrix<double,4,4>::Identity() +(0.75 * omega4 *dt)-(0.25 * oldomega4 * dt) -
+            ((1.0/6.0) * angvelo.squaredNorm() * pow(dt,2) *  Eigen::Matrix<double, 4, 4>::Identity()) -
+            ((1.0/24.0) * omega4 * oldomega4 * pow(dt,2)) - ((1.0/48.0) * angvelo.squaredNorm() * omega4 * pow(dt,3))) * quat;
+
+            Eigen::Quaternion<double> deltaq;
+            deltaq.w() = quat(0);
+            deltaq.x() = quat(1);
+            deltaq.y() = quat(2);
+            deltaq.z() = quat(3);
+            deltaq.normalize();
+
+            return deltaq;
+        };
+
     };
 }
 

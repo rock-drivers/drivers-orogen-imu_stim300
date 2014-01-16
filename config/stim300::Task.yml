@@ -1,0 +1,103 @@
+--- name:default
+# General configuration values to run the task
+filter_configuration:
+  source_frame_name: 'world'
+  target_frame_name: 'imu'
+  use_samples_as_theoretical_gravity: true
+  use_inclinometers: true
+  use_magnetometers: false
+  init_leveling_samples: 500
+
+--- name:Bremen
+# Localization properties related to the geographic place (i.e.: latitude, longitude, magnetic declination).
+location:
+  latitude: 0.926478944
+  longitude: 0.153588974
+  altitude: 12.0
+  magnetic_declination: 0.023561944
+  magnetic_declination_mode: 1
+  dip_angle: 1.187696556
+
+
+--- name:stim300_10g
+# Adaptive estimation of external acceleration.
+adaptive_config_acc:
+  M1: 5
+  M2: 500
+  gamma: 0.0062
+
+# Adaptive estimation of external inclinometers.
+adaptive_config_inc:
+  M1: 5
+  M2: 350
+  gamma: 0.00527
+
+# Inertial Sensors property.
+inertial_noise:
+  bandwidth: 131.0 #Hertz
+  gbiasoff:
+    data:
+    - 0.0 #3.1396251683848041e-05
+    - 0.0 #0.0004564014580275626
+    - 0.0 #-0.00045970399412453427
+  gyrorw:
+    data:
+    - 7.0e-05 #4.320343e-05
+    - 7.0e-05 #4.175001e-05
+    - 7.0e-05 #4.060973e-05
+  gyrorrw:
+    data:
+    - 0.0
+    - 0.0
+    - 0.0
+  gbiasins:
+    data:
+    - 6.882191e-06
+    - 8.479295e-06
+    - 5.591609e-06
+  abiasoff:
+    data:
+    - 0.0 #-0.0027
+    - 0.0 
+    - 0.0 #0.0055
+  accrw:
+    data:
+    - 0.00150 #0.0009858879
+    - 0.00150 #0.001097635
+    - 0.00150 #0.001070773
+  accrrw:
+    data:
+    - 0.0
+    - 0.0
+    - 0.0
+  abiasins:
+    data:
+    - 0.0005639343
+    - 0.0006412585
+    - 0.0005866994
+  magrw:
+    data:
+    - 0.0
+    - 0.0
+    - 0.0
+  accresolut:
+    data:
+    - 0.005886 #0.6mg
+    - 0.005886 #0.6mg
+    - 0.005886 #0.6mg
+  incrw:
+    data:
+    - 0.0050
+    - 0.0050
+    - 0.0050
+  ibiasins:
+    data:
+    - 0.0005639343
+    - 0.0006412585
+    - 0.0005866994
+  incresolut:
+    data:
+    - 0.002 #0.6mg
+    - 0.002 #0.6mg
+    - 0.002 #0.6mg
+
