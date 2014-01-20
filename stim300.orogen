@@ -5,7 +5,6 @@ name "stim300"
 # If new data types need to be defined, they have to be put in a separate C++
 # header, and this header will be loaded here
 using_library 'stim300'
-using_library 'quater_ikf'
 using_library "aggregator"
 import_types_from "stim300Types.hpp"
 
