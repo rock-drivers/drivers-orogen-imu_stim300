@@ -10,7 +10,7 @@
 #define R2D 180.00/M_PI /** Convert radian to degree **/
 #endif
 
-//#define DEBUG_PRINTS 1
+#define DEBUG_PRINTS 1
 
 using namespace stim300;
 
@@ -42,15 +42,6 @@ bool Task::configureHook()
     if (! TaskBase::configureHook())
         return false;
 
-    /*************************************/
-    /** Configuration of Time estimator **/
-    /*************************************/
-    timestamp_estimator = new aggregator::TimestampEstimator(
-	base::Time::fromSeconds(20),
-	base::Time::fromSeconds(1.0 / stim300::DEFAULT_SAMPLING_FREQUENCY),
-	base::Time::fromSeconds(0),
-	INT_MAX);
-
     /*********************************/
     /** Configuration of the driver **/
     /*********************************/
@@ -59,7 +50,7 @@ bool Task::configureHook()
     else if (_revision.value() == stim300::REV_D)
         stim300_driver = new stim300::Stim300RevD();
     else
-        throw std::runtime_error("STIM300 Firmware Revision NO implemented");
+        throw std::runtime_error("STIM300 Firmware Revision NOT implemented");
 
     /** Set the baudrate to the value in the rock property */
     stim300_driver->setBaudrate(_baudrate.value());
@@ -97,11 +88,19 @@ bool Task::configureHook()
     adaptiveconfigInc = _adaptive_config_inc.value();
     location = _location.value();
 
+    /*************************************/
+    /** Configuration of Time estimator **/
+    /*************************************/
+    timestamp_estimator = new aggregator::TimestampEstimator(
+	base::Time::fromSeconds(20),
+	base::Time::fromSeconds(_timeout.value()/1000.00),
+	base::Time::fromSeconds(0),
+	INT_MAX);
+
     /*************************/
     /** Noise configuration **/
     /*************************/
-    sqrtdelta_t = sqrt(1.0/inertialnoise.bandwidth);
-    //sqrtdelta_t = sqrt(_inertial_samples_period.value());
+    sqrtdelta_t = sqrt(1.0/inertialnoise.bandwidth); /** Noise depends on frequency bandwidth **/
 
     Ra = Eigen::Matrix3d::Zero();
     Ra(0,0) = inertialnoise.accresolut[0] + pow(inertialnoise.accrw[0]/sqrtdelta_t,2);
@@ -151,7 +150,7 @@ bool Task::configureHook()
 
     /** Theoretical Gravity **/
     double gravity = GRAVITY;
-    if (location.latitude > 0 && location.latitude < 90)
+    if (location.latitude > 0.0 && location.latitude < 90.0)
         gravity = GravityModel (location.latitude, location.altitude);
 
     /** Initialize the filter, including the adaptive part **/
@@ -174,6 +173,7 @@ bool Task::configureHook()
     orientationOut.invalidate();
     orientationOut.sourceFrame = config.source_frame_name;
     orientationOut.targetFrame = config.target_frame_name;
+    orientationOut.orientation.setIdentity();
 
     #ifdef DEBUG_PRINTS
     std::cout<< "Rg\n"<<Rg<<"\n";
@@ -192,7 +192,7 @@ bool Task::startHook()
 {
     if (! TaskBase::startHook())
         return false;
-    
+
     // Here, "fd" is the file descriptor of the underlying device
     // it is usually created in configureHook()
     RTT::extras::FileDescriptorActivity* activity =
@@ -200,8 +200,9 @@ bool Task::startHook()
     if (activity)
     {
         activity->watch(stim300_driver->getFileDescriptor());
-	activity->setTimeout(2*_timeout);
+	activity->setTimeout(_timeout);
     }
+
     return true;
 }
 void Task::updateHook()
@@ -263,7 +264,7 @@ void Task::updateHook()
                     {
                         euler[0] = (double) asin((double)meansamples[1]/ (double)meansamples.norm()); // Roll
                         euler[1] = (double) -atan(meansamples[0]/meansamples[2]); //Pitch
-                        euler[2] = M_PI;//Yaw (Work around for STIM3000 in Asguard)
+                        euler[2] = 0.00;//Yaw
 
                         /** Set the initial attitude  **/
                         attitude = Eigen::Quaternion <double> (Eigen::AngleAxisd(euler[2], Eigen::Vector3d::UnitZ())*
@@ -305,13 +306,13 @@ void Task::updateHook()
                 myfilter.predict(gyro, delta_t);
 
                 /** Update/Correction **/
-                //myfilter.update(acc, true, incl, config.use_inclinometers);
+                myfilter.update(acc, true, incl, config.use_inclinometers);
 
                 /** Delta quaternion of this step **/
-                //deltaquat = attitude.inverse() * myfilter.getAttitude();
+                deltaquat = attitude.inverse() * myfilter.getAttitude();
 
                 /** Delta quaternion of this step **/
-                //deltahead = deltaHeading(gyro, oldomega, delta_t);
+                deltahead = deltaHeading(gyro, oldomega, delta_t);
 
             }
         }
@@ -322,11 +323,13 @@ void Task::updateHook()
         RTT::log(RTT::Fatal)<<"[STIM300] Datagram Checksum ERROR."<<RTT::endlog();
     }
 
-//    stim300_driver->printInfo();
+    //stim300_driver->printInfo();
 
     /** Output information **/
     this->outputPortSamples(stim300_driver, myfilter, imusamples);
 
+    /** Timestamp estimator status **/
+    _timestamp_estimator_status.write(timestamp_estimator->getStatus());
 
 }
 void Task::errorHook()
@@ -408,8 +411,8 @@ void Task::outputPortSamples(stim300::Stim300Base *driver, filter::Ikf<double, t
                 Eigen::AngleAxisd(scaleangle[0], Eigen::Vector3d::UnitX()));
 
         orientationOut.time = imusamples.time;
-        orientationOut.orientation = myfilter.getAttitude();
-       // orientationOut.orientation = attitude;
+        //orientationOut.orientation = myfilter.getAttitude();
+        orientationOut.orientation = attitude;
         orientationOut.cov_orientation = Pk.block<3,3>(0,0);
         _orientation_samples_out.write(orientationOut);
 

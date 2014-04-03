@@ -15,7 +15,7 @@ location:
   longitude: 0.153588974
   altitude: 12.0
   magnetic_declination: 0.023561944
-  magnetic_declination_mode: 1 #EAST
+  magnetic_declination_mode: 'EAST'
   dip_angle: 1.187696556
 
 
@@ -26,7 +26,7 @@ location:
   longitude: 0.07709999 # 4deg 25 min 03 sec EAST
   altitude: 0.0
   magnetic_declination: 0.006690428 #0 deg 23 min EAST
-  magnetic_declination_mode: 1
+  magnetic_declination_mode: 'EAST'
   dip_angle: 0.00663
 
 --- name:stim300_10g
@@ -115,18 +115,18 @@ inertial_noise:
 # Adaptive estimation of external acceleration.
 adaptive_config_acc:
   M1: 5
-  M2: 500
-  gamma: 0.0062
+  M2: 125
+  gamma: 0.003
 
 # Adaptive estimation of external inclinometers.
 adaptive_config_inc:
   M1: 5
-  M2: 350
-  gamma: 0.00527
+  M2: 75
+  gamma: 0.005
 
 # Inertial Sensors property.
 inertial_noise:
-  bandwidth: 131.0 #Hertz
+  bandwidth: 16.0 #Hertz
   gbiasoff:
     data:
     - 0.0
@@ -167,16 +167,11 @@ inertial_noise:
     - 0.0004368486
     - 0.0003441604
     - 0.0003097561
-  magrw:
-    data:
-    - 0.0
-    - 0.0
-    - 0.0
   accresolut:
     data:
-    - 0.00
-    - 0.00
-    - 0.00
+    - 0.0024525
+    - 0.0024525
+    - 0.0024525
   incrw:
     data:
     - 0.001420615
@@ -192,4 +187,9 @@ inertial_noise:
     - 0.00
     - 0.00
     - 0.00
+  magrw:
+    data:
+    - 0.0
+    - 0.0
+    - 0.0
 

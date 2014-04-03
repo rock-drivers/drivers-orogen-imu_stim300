@@ -7,7 +7,11 @@
 
 namespace stim300 {
 
+    /** Sensornor revision names **/
     enum FIRMWARE_REVISIONS{REV_A, REV_B, REV_C, REV_D};
+
+    /** Magnetic declination mode **/
+    enum MAGNETIC_DECLINATION_MODE{EAST, WEST};
 
     /** STIM300 temperature sensor **/
     struct Temperature
@@ -36,17 +40,21 @@ namespace stim300 {
         bool use_samples_as_theoretical_gravity;//Inclinometers are more stable than accelerometers at initial time.
                                                     //They cloud be use as theoretical local gravity value instead of using
                                                     //some models as WGS-84 ellipsoid Earth.
-                                                    //It will use inclinometers in case use_inclinometers_leveling is true
+                                                    //It will use inclinometers in case use_inclinometers is true
                                                     //and accelerometers otherwise.
         bool use_inclinometers;//Some IMU provide inclinometers as fast and more accurate solution for initial leveling.
                                 //Set True or False to use inclinometers values or not.
                                 //Note: Check if the IMU has inclinometers information.
 
         bool use_magnetometers;// Some IMUS provides Magnetic information.
-                                    // Set to true or false in case you want to correct heading with magnetometers
+                                // Set to true or false in case you want to correct heading with magnetometers
 
         unsigned int init_leveling_samples;//Samples to compute the initial leveling of the imu in order to find the gravity vector.
                                             //Set to zero in case zero attitude is desired as initial orientation from an arbitrary frame.
+
+        double correction_frequency; //frequency of the correction step. This will affect the output port frequency of the task
+                                        //Set to zero or the same sampling frequency to correct at the same time than predict
+
     };
 
     //Data type for the Inertial measurement characteristic
@@ -58,7 +66,7 @@ namespace stim300 {
 
         double bandwidth; //Inertial sensors bandwidth in Hertz.
         //This is characteristic of the sensor and should be equal
-        //or smaller than the sampling rate.
+        //or smaller than the sampling rate but normaly it should respect Nyquist frequency
 
         /** Gyroscope Noise **/
         base::Vector3d gbiasoff;//bias offset in static regimen for the Gyroscopes
@@ -90,15 +98,15 @@ namespace stim300 {
         double longitude;//Longitude in radians
         double altitude;//Altitude in meters
         double magnetic_declination;//Declination in radians
-        int magnetic_declination_mode;//The declination is positive when the magnetic north is east of true north
-                                    //1 is EAST, which means positive declination. 2 is WEST, which means negative declination.
+        stim300::MAGNETIC_DECLINATION_MODE magnetic_declination_mode;//The declination is positive when the magnetic north is East of true north
+                                                                    //EAST means positive declination and WEST means negative declination.
         double dip_angle;//Dip angle in radians
     };
 
     /** Adaptive Measurement Configuration. Variables for the attitude estimation inside the algorithm **/
     struct AdaptiveAttitudeConfig
     {
-        unsigned int M1; /** Parameter for adaptive algorithm (to estimate Uk with is not directly observable) */
+        unsigned int M1; /** Parameter for adaptive algorithm (to estimate Uk which is not directly observable) */
         unsigned int M2; /** Parameter for adaptive algorithm (to prevent false entering in no-external acc mode) */
         double gamma; /** Parameter for adaptive algorithm. Only entering when Qstart (adaptive cov. matrix) is greater than RHR'+Ra */
 

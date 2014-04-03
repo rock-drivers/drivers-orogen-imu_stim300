@@ -103,7 +103,7 @@ namespace stim300 {
         /** Output port variables **/
         /***************************/
 
-        base::samples::RigidBodyState orientationOut;
+        base::samples::RigidBodyState orientationOut; /** the output orientation **/
 
     public:
         /** TaskContext constructor for Task
@@ -213,7 +213,7 @@ namespace stim300 {
 	    g = g*pow(Re/(Re+altitude), 2);
 
             #ifdef DEBUG_PRINTS
-	    std::cout<<"[UTIL_CLASS] Theoretical gravity for this location (WGS-84 ellipsoid model): "<< g<<" [m/s^2]\n";
+	    std::cout<<"[STIM300_CLASS] Theoretical gravity for this location (WGS-84 ellipsoid model): "<< g<<" [m/s^2]\n";
             #endif
 
 	    return g;
@@ -243,7 +243,7 @@ namespace stim300 {
 	    v = q * v;
 
 	    #ifdef DEBUG_PRINTS
-	    std::cout<<"[UTIL_CLASS] Earth Rotation:"<<v<<"\n";
+	    std::cout<<"[STIM300_CLASS] Earth Rotation:"<<v<<"\n";
 	    #endif
 
 	    /** Subtract the earth rotation to the vector of inputs (u = u-v**/

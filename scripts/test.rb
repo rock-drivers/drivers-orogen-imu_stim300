@@ -18,11 +18,11 @@ Orocos::Process.run 'stim300::Task' => 'stim300' do
 
     # Get the task
     driver = Orocos.name_service.get 'stim300'
-    Orocos.conf.apply(driver, ['default','Bremen','stim300_10g'], :override => true)
+    Orocos.conf.apply(driver, ['default','ESTEC','stim300_5g'], :override => true)
 
     driver.port = ARGV[0]
-    driver.revision = 'REV_B'
-    driver.timeout = 2
+    driver.revision = 'REV_D'
+    driver.timeout = 8
     driver.use_filter = true
 
     driver.configure
@@ -31,9 +31,9 @@ Orocos::Process.run 'stim300::Task' => 'stim300' do
     # Orientation visualization
     attitudeRBS = Vizkit.default_loader.RigidBodyStateVisualization
     attitudeRBS.setPluginName("Attitude")
+    attitudeRBS.resetModel(0.4)
     attitudeRBS.loadModel("./stim300.stl")
     #attitudeRBS.setColor(Eigen::Vector3.new(255, 0, 0))#Red
-    #attitudeRBS.resetModel(0.4)
     #Vizkit.vizkit3d_widget.setPluginDataFrame("world", attitudeRBS)
 
     Vizkit.display driver.port('orientation_samples_out'), :widget =>attitudeRBS

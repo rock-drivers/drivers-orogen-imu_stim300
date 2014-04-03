@@ -36,8 +36,8 @@ task_context "Task" do
         doc 'Baud rate to open the serial com_port and debug_port'
 
     property('timeout', 'int', 8).
-        doc 'the expected time (in milliseconds) to have a whole package in the fd'+
-	'by default 8 millisecond (0.008 seconds) which corresponds to 125Hz.'
+        doc 'the expected time (in milliseconds) to have a whole package in the fd (the device port)'+
+	'by default 8 millisecond (0.008 seconds) which corresponds to 125Hz (it should be the sensor sampling frequency).'
 
     property('use_filter', 'bool', true).
         doc 'set to true to active the attitude estimation filter, set false otherwise.'+
