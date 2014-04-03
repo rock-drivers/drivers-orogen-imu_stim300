@@ -35,7 +35,7 @@ task_context "Task" do
     property('baudrate', 'int', 921600).
         doc 'Baud rate to open the serial com_port and debug_port'
 
-    property('timeout', 'int', 8).
+    property('timeout', 'double', 8.0).
         doc 'the expected time (in milliseconds) to have a whole package in the fd (the device port)'+
 	'by default 8 millisecond (0.008 seconds) which corresponds to 125Hz (it should be the sensor sampling frequency).'
 
