@@ -10,7 +10,7 @@
 #define R2D 180.00/M_PI /** Convert radian to degree **/
 #endif
 
-#define DEBUG_PRINTS 1
+//#define DEBUG_PRINTS 1
 
 using namespace stim300;
 
