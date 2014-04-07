@@ -83,7 +83,9 @@ bool Task::configureHook()
     /** Read configuration **/
     /************************/
     config = _filter_configuration.value();
-    inertialnoise = _inertial_noise.value();
+    accnoise = _accelerometer_noise.value();
+    gyronoise = _gyroscope_noise.value();
+    incnoise = _inclinometer_noise.value();
     adaptiveconfigAcc = _adaptive_config_acc.value();
     adaptiveconfigInc = _adaptive_config_inc.value();
     location = _location.value();
@@ -100,45 +102,47 @@ bool Task::configureHook()
     /*************************/
     /** Noise configuration **/
     /*************************/
-    sqrtdelta_t = sqrt(1.0/inertialnoise.bandwidth); /** Noise depends on frequency bandwidth **/
+    sqrtdelta_t = sqrt(1.0/accnoise.bandwidth); /** Noise depends on frequency bandwidth **/
 
     Ra = Eigen::Matrix3d::Zero();
-    Ra(0,0) = inertialnoise.accresolut[0] + pow(inertialnoise.accrw[0]/sqrtdelta_t,2);
-    Ra(1,1) = inertialnoise.accresolut[1] + pow(inertialnoise.accrw[1]/sqrtdelta_t,2);
-    Ra(2,2) = inertialnoise.accresolut[2] + pow(inertialnoise.accrw[2]/sqrtdelta_t,2);
+    Ra(0,0) = accnoise.resolution[0] + pow(accnoise.randomwalk[0]/sqrtdelta_t,2);
+    Ra(1,1) = accnoise.resolution[1] + pow(accnoise.randomwalk[1]/sqrtdelta_t,2);
+    Ra(2,2) = accnoise.resolution[2] + pow(accnoise.randomwalk[2]/sqrtdelta_t,2);
+
+    sqrtdelta_t = sqrt(1.0/gyronoise.bandwidth); /** Noise depends on frequency bandwidth **/
 
     Rg = Eigen::Matrix3d::Zero();
-    Rg(0,0) = pow(inertialnoise.gyrorw[0]/sqrtdelta_t,2);
-    Rg(1,1) = pow(inertialnoise.gyrorw[1]/sqrtdelta_t,2);
-    Rg(2,2) = pow(inertialnoise.gyrorw[2]/sqrtdelta_t,2);
+    Rg(0,0) = pow(gyronoise.randomwalk[0]/sqrtdelta_t,2);
+    Rg(1,1) = pow(gyronoise.randomwalk[1]/sqrtdelta_t,2);
+    Rg(2,2) = pow(gyronoise.randomwalk[2]/sqrtdelta_t,2);
 
-    Rm = Eigen::Matrix3d::Zero();
-    Rm(0,0) = pow(inertialnoise.magrw[0]/sqrtdelta_t,2);
-    Rm(1,1) = pow(inertialnoise.magrw[1]/sqrtdelta_t,2);
-    Rm(2,2) = pow(inertialnoise.magrw[2]/sqrtdelta_t,2);
+    sqrtdelta_t = sqrt(1.0/incnoise.bandwidth); /** Noise depends on frequency bandwidth **/
 
     Ri = Eigen::Matrix3d::Zero();
-    Ri(0,0) = inertialnoise.incresolut[0] + pow(inertialnoise.incrw[0]/sqrtdelta_t,2);
-    Ri(1,1) = inertialnoise.incresolut[1] + pow(inertialnoise.incrw[1]/sqrtdelta_t,2);
-    Ri(2,2) = inertialnoise.incresolut[2] + pow(inertialnoise.incrw[2]/sqrtdelta_t,2);
+    Ri(0,0) = incnoise.resolution[0] + pow(incnoise.randomwalk[0]/sqrtdelta_t,2);
+    Ri(1,1) = incnoise.resolution[1] + pow(incnoise.randomwalk[1]/sqrtdelta_t,2);
+    Ri(2,2) = incnoise.resolution[2] + pow(incnoise.randomwalk[2]/sqrtdelta_t,2);
+
+    /** It does not have magnetometers **/
+    Rm = Eigen::Matrix3d::Zero();
 
     /** Noise for error in gyros bias instability **/
     Qbg.setZero();
-    Qbg(0,0) = pow(inertialnoise.gbiasins[0],2);
-    Qbg(1,1) = pow(inertialnoise.gbiasins[1],2);
-    Qbg(2,2) = pow(inertialnoise.gbiasins[2],2);
+    Qbg(0,0) = pow(gyronoise.biasinstability[0],2);
+    Qbg(1,1) = pow(gyronoise.biasinstability[1],2);
+    Qbg(2,2) = pow(gyronoise.biasinstability[2],2);
 
     /** Noise for error in accelerometers bias instability **/
     Qba.setZero();
-    Qba(0,0) = pow(inertialnoise.abiasins[0],2);
-    Qba(1,1) = pow(inertialnoise.abiasins[1],2);
-    Qba(2,2) = pow(inertialnoise.abiasins[2],2);
+    Qba(0,0) = pow(accnoise.biasinstability[0],2);
+    Qba(1,1) = pow(accnoise.biasinstability[1],2);
+    Qba(2,2) = pow(accnoise.biasinstability[2],2);
 
     /** Noise for error in inclinometers bias instability **/
     Qbi.setZero();
-    Qbi(0,0) = pow(inertialnoise.ibiasins[0],2);
-    Qbi(1,1) = pow(inertialnoise.ibiasins[1],2);
-    Qbi(2,2) = pow(inertialnoise.ibiasins[2],2);
+    Qbi(0,0) = pow(incnoise.biasinstability[0],2);
+    Qbi(1,1) = pow(incnoise.biasinstability[1],2);
+    Qbi(2,2) = pow(incnoise.biasinstability[2],2);
 
 
     /** Initial error covariance **/
@@ -277,6 +281,11 @@ void Task::updateHook()
                     else
                     {
                         attitude.setIdentity();
+                        #ifdef DEBUG_PRINTS
+                        euler[2] = attitude.toRotationMatrix().eulerAngles(2,1,0)[0];//Yaw
+                        euler[1] = attitude.toRotationMatrix().eulerAngles(2,1,0)[1];//Pitch
+                        euler[0] = attitude.toRotationMatrix().eulerAngles(2,1,0)[2];//Roll
+                        #endif
                     }
 
                     myfilter.setAttitude(attitude);
@@ -314,6 +323,13 @@ void Task::updateHook()
                 /** Delta quaternion of this step **/
                 deltahead = deltaHeading(gyro, oldomega, delta_t);
 
+                //stim300_driver->printInfo();
+
+                /** Output information **/
+                this->outputPortSamples(stim300_driver, myfilter, imusamples);
+
+                /** Timestamp estimator status **/
+                _timestamp_estimator_status.write(timestamp_estimator->getStatus());
             }
         }
     }
@@ -322,16 +338,8 @@ void Task::updateHook()
         //std::cout<<"STIM300 Checksum error\n";
         RTT::log(RTT::Fatal)<<"[STIM300] Datagram Checksum ERROR."<<RTT::endlog();
     }
-
-    //stim300_driver->printInfo();
-
-    /** Output information **/
-    this->outputPortSamples(stim300_driver, myfilter, imusamples);
-
-    /** Timestamp estimator status **/
-    _timestamp_estimator_status.write(timestamp_estimator->getStatus());
-
 }
+
 void Task::errorHook()
 {
     TaskBase::errorHook();

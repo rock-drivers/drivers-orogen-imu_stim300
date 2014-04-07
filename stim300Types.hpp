@@ -57,7 +57,7 @@ namespace stim300 {
 
     };
 
-    //Data type for the Inertial measurement characteristic
+    //Data type for the Accelerometers measurement characteristic
     struct InertialNoiseParameters
     {
         /********************************/
@@ -68,27 +68,12 @@ namespace stim300 {
         //This is characteristic of the sensor and should be equal
         //or smaller than the sampling rate but normaly it should respect Nyquist frequency
 
-        /** Gyroscope Noise **/
-        base::Vector3d gbiasoff;//bias offset in static regimen for the Gyroscopes
-        base::Vector3d gyrorw;//angle random walk for gyroscopes (rad/sqrt(s))
-        base::Vector3d gyrorrw;//rate random walk for gyroscopes (rad/s/sqrt(s))
-        base::Vector3d gbiasins; //gyros bias instability (rad/s)
-
         /** Accelerometers Noise **/
-        base::Vector3d abiasoff;//bias offset in static regimen for the Accelerometers
-        base::Vector3d accrw;//velocity random walk for accelerometers (m/s/sqrt(s))
-        base::Vector3d accrrw;//acceleration random walk for accelerometers (m/s^2/sqrt(s))
-        base::Vector3d abiasins;//accelerometers bias instability (m/s^2)
-        base::Vector3d accresolut;//minimum accelerometers resolution (m/s^2)
-
-        /** Magnetometers Noise **/
-        base::Vector3d magrw; //random walk for magnetometers
-
-        /** Inclinometers Noise **/
-        base::Vector3d incrw; //random walk for inclinometers (m/s/sqrt(s))
-        base::Vector3d ibiasins;//accelerometers bias instability (m/s^2)
-        base::Vector3d incresolut;//minimum accelerometers resolution (m/s^2)
-
+        base::Vector3d biasoffset;//bias offset in static regimen for the Accelerometers
+        base::Vector3d randomwalk;//velocity/ random walk for accelerometers (m/s/sqrt(s))
+        base::Vector3d raterandomwalk;//acceleration random walk for accelerometers (m/s^2/sqrt(s))
+        base::Vector3d biasinstability;//accelerometers bias instability (m/s^2)
+        base::Vector3d resolution;//minimum accelerometers resolution (m/s^2)
     };
 
     //Data type to know the location

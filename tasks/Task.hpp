@@ -69,8 +69,14 @@ namespace stim300 {
         /** Filter configuration values **/
         FilterConfiguration config;
 
-        /** Inertial noise parameters **/
-        InertialNoiseParameters inertialnoise;
+        /** Accelerometers noise parameters **/
+        InertialNoiseParameters accnoise;
+
+        /** Gyroscopes noise parameters **/
+        InertialNoiseParameters gyronoise;
+
+        /** Inclinometers noise parameters **/
+        InertialNoiseParameters incnoise;
 
         /** Adaptive Measurement Configuration **/
         AdaptiveAttitudeConfig adaptiveconfigAcc;

@@ -53,7 +53,13 @@ task_context "Task" do
     #*********************************************
     #**** Inertial Measurement Unit Properties ***
     #*********************************************
-    property('inertial_noise','stim300/InertialNoiseParameters').
+    property('accelerometer_noise','stim300/InertialNoiseParameters').
+        doc 'Inertial Sensors property.'
+
+    property('gyroscope_noise','stim300/InertialNoiseParameters').
+        doc 'Inertial Sensors property.'
+
+    property('inclinometer_noise','stim300/InertialNoiseParameters').
         doc 'Inertial Sensors property.'
 
     #****************************

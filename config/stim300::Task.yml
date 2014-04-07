@@ -15,9 +15,8 @@ location:
   longitude: 0.153588974
   altitude: 12.0
   magnetic_declination: 0.023561944
-  magnetic_declination_mode: 'EAST'
+  magnetic_declination_mode: :EAST
   dip_angle: 1.187696556
-
 
 --- name:ESTEC
 # Localization properties related to the geographic place (i.e.: latitude, longitude, magnetic declination).
@@ -26,7 +25,7 @@ location:
   longitude: 0.07709999 # 4deg 25 min 03 sec EAST
   altitude: 0.0
   magnetic_declination: 0.006690428 #0 deg 23 min EAST
-  magnetic_declination_mode: 'EAST'
+  magnetic_declination_mode: :EAST
   dip_angle: 0.00663
 
 --- name:stim300_10g
@@ -42,154 +41,191 @@ adaptive_config_inc:
   M2: 350
   gamma: 0.00527
 
-# Inertial Sensors property.
-inertial_noise:
-  bandwidth: 131.0 #Hertz
-  gbiasoff:
-    data:
-    - 0.0 #3.1396251683848041e-05
-    - 0.0 #0.0004564014580275626
-    - 0.0 #-0.00045970399412453427
-  gyrorw:
-    data:
-    - 7.0e-05 #4.320343e-05
-    - 7.0e-05 #4.175001e-05
-    - 7.0e-05 #4.060973e-05
-  gyrorrw:
+# Accelerometers Sensors property.
+accelerometer_noise:
+  bandwidth: 16.0 #Hertz
+  biasoffset:
     data:
     - 0.0
     - 0.0
     - 0.0
-  gbiasins:
-    data:
-    - 6.882191e-06
-    - 8.479295e-06
-    - 5.591609e-06
-  abiasoff:
-    data:
-    - 0.0 #-0.0027
-    - 0.0 
-    - 0.0 #0.0055
-  accrw:
+  randomwalk:
     data:
     - 0.00150 #0.0009858879
     - 0.00150 #0.001097635
     - 0.00150 #0.001070773
-  accrrw:
+  raterandomwalk:
     data:
     - 0.0
     - 0.0
     - 0.0
-  abiasins:
+  biasinstability:
     data:
     - 0.0005639343
     - 0.0006412585
     - 0.0005866994
-  magrw:
-    data:
-    - 0.0
-    - 0.0
-    - 0.0
-  accresolut:
+  resolution:
     data:
     - 0.005886 #0.6mg
     - 0.005886 #0.6mg
     - 0.005886 #0.6mg
-  incrw:
+
+## Gyroscopes Sensors property.
+gyroscope_noise:
+  bandwidth: 16.0 #Hertz
+  biasoffset:
+    data:
+    - 0.0 #3.1396251683848041e-05
+    - 0.0 #0.0004564014580275626
+    - 0.0 #-0.00045970399412453427
+  randomwalk:
+    data:
+    - 7.0e-05 #4.320343e-05
+    - 7.0e-05 #4.175001e-05
+    - 7.0e-05 #4.060973e-05
+  raterandomwalk:
+    data:
+    - 0.0
+    - 0.0
+    - 0.0
+  biasinstability:
+    data:
+    - 6.882191e-06
+    - 8.479295e-06
+    - 5.591609e-06
+  resolution:
+    data:
+    - 0.0
+    - 0.0
+    - 0.0
+
+## Inclinometers Sensors property.
+inclinometer_noise:
+  bandwidth: 16.0 #Hertz
+  biasoffset:
+    data:
+    - 0.0
+    - 0.0
+    - 0.0
+  randomwalk:
     data:
     - 0.0050
     - 0.0050
     - 0.0050
-  ibiasins:
+  raterandomwalk:
+    data:
+    - 0.0
+    - 0.0
+    - 0.0
+  biasinstability:
     data:
     - 0.0005639343
     - 0.0006412585
     - 0.0005866994
-  incresolut:
+  resolution:
     data:
     - 0.002 #0.6mg
     - 0.002 #0.6mg
     - 0.002 #0.6mg
+
 
 --- name:stim300_5g
 # Adaptive estimation of external acceleration.
 adaptive_config_acc:
   M1: 5
-  M2: 125
+  M2: 25
   gamma: 0.003
 
 # Adaptive estimation of external inclinometers.
 adaptive_config_inc:
   M1: 5
-  M2: 75
+  M2: 125
   gamma: 0.005
 
-# Inertial Sensors property.
-inertial_noise:
-  bandwidth: 16.0 #Hertz
-  gbiasoff:
+# Accelerometers Sensors property.
+accelerometer_noise:
+  bandwidth: 33.0 #Hertz
+  biasoffset:
     data:
     - 0.0
     - 0.0
     - 0.0
-  gyrorw:
-    data:
-    - 4.320343e-05
-    - 4.455001e-05
-    - 4.060973e-05
-  gyrorrw:
-    data:
-    - 0.0
-    - 0.0
-    - 0.0
-  gbiasins:
-    data:
-    - 7.05e-06
-    - 4.82e-06
-    - 6.36e-06
-  abiasoff:
-    data:
-    - 0.0
-    - 0.0
-    - 0.0
-  accrw:
+  randomwalk:
     data:
     - 0.0005420144
     - 0.0005131682
     - 0.0004908665
-  accrrw:
+  raterandomwalk:
     data:
     - 0.0
     - 0.0
     - 0.0
-  abiasins:
+  biasinstability:
     data:
     - 0.0004368486
     - 0.0003441604
     - 0.0003097561
-  accresolut:
+  resolution:
     data:
-    - 0.0024525
-    - 0.0024525
-    - 0.0024525
-  incrw:
+    - 0.0024525 #0.25mg
+    - 0.0024525 #0.25mg
+    - 0.0024525 #0.25mg
+
+# Gyroscopes Sensors property.
+gyroscope_noise:
+  bandwidth: 33.0 #Hertz
+  biasoffset:
     data:
-    - 0.001420615
-    - 0.001471053
+    - 0.0
+    - 0.0
+    - 0.0
+  randomwalk:
+    data:
+    - 7.0e-05 #4.320343e-05
+    - 7.0e-05 #4.455001e-05
+    - 7.0e-05 #4.060973e-05
+  raterandomwalk:
+    data:
+    - 0.0
+    - 0.0
+    - 0.0
+  biasinstability:
+    data:
+    - 7.05e-06
+    - 4.82e-06
+    - 6.36e-06
+  resolution:
+    data:
+    - 0.0
+    - 0.0
+    - 0.0
+
+# Inclinometers Sensors property.
+inclinometer_noise:
+  bandwidth: 33.0 #Hertz
+  biasoffset:
+    data:
+    - 0.0
+    - 0.0
+    - 0.0
+  randomwalk:
+    data:
     - 0.002019287
-  ibiasins:
+    - 0.002019287
+    - 0.002019287
+  raterandomwalk:
+    data:
+    - 0.0
+    - 0.0
+    - 0.0
+  biasinstability:
     data:
     - 0.001292219
     - 0.001160451
     - 0.00146485
-  incresolut:
+  resolution:
     data:
     - 0.00
     - 0.00
     - 0.00
-  magrw:
-    data:
-    - 0.0
-    - 0.0
-    - 0.0
 
