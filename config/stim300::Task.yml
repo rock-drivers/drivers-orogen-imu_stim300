@@ -139,8 +139,8 @@ adaptive_config_acc:
 # Adaptive estimation of external inclinometers.
 adaptive_config_inc:
   M1: 5
-  M2: 125
-  gamma: 0.005
+  M2: 250
+  gamma: 0.003
 
 # Accelerometers Sensors property.
 accelerometer_noise:
@@ -202,7 +202,7 @@ gyroscope_noise:
 
 # Inclinometers Sensors property.
 inclinometer_noise:
-  bandwidth: 33.0 #Hertz
+  bandwidth: 16.0 #Hertz
   biasoffset:
     data:
     - 0.0
