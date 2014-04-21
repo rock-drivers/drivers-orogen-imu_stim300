@@ -315,9 +315,9 @@ void Task::updateHook()
 
                                 /** Determine the heading or azimuthal orientation **/
                                 if (meangyro[0] == 0.00)
-                                    euler[2] = atan(meangyro[0]/meangyro[1]) - 90.0*D2R;
+                                    euler[2] = 90.0*D2R - atan(meangyro[0]/meangyro[1]);
                                 else
-                                    euler[2] = -atan(meangyro[1]/meangyro[0]);
+                                    euler[2] = atan(meangyro[1]/meangyro[0]);
 
                                 /** Set the attitude  **/
                                 attitude = Eigen::Quaternion <double> (Eigen::AngleAxisd(euler[2], Eigen::Vector3d::UnitZ())*
@@ -358,12 +358,9 @@ void Task::updateHook()
                     state(RUNNING);
 
                 /** Eliminate Earth rotation **/
-                if (config.initial_alignment_samples > 0)
-                {
-                    Eigen::Quaterniond q_body2world = myfilter.getAttitude().inverse();
-                    SubtractEarthRotation(gyro, q_body2world, location.latitude);
-                    imusamples.gyro = gyro;
-                }
+                Eigen::Quaterniond q_body2world = myfilter.getAttitude().inverse();
+                SubtractEarthRotation(gyro, q_body2world, location.latitude);
+                imusamples.gyro = gyro;
 
                 /** Predict **/
                 myfilter.predict(gyro, delta_t);
