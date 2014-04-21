@@ -172,6 +172,8 @@ bool Task::configureHook()
     /** Oldomega initial **/
     oldomega.setZero();
 
+    /** Initial attitude **/
+    attitude.setIdentity();
     initAttitude = false;
 
     /** Output variable **/
@@ -330,6 +332,27 @@ void Task::updateHook()
                                 std::cout<< " Filter Gravity: "<<myfilter.getGravity()[2]<<"\n";
                                 std::cout<< "******** Azimuthal Orientation *******"<<"\n";
                                 std::cout<< " Yaw: "<<euler[2]*R2D<<"\n";
+                                #endif
+
+                                /** Compute the Initial Bias **/
+                                meangyro[0] = initial_alignment_gyro.row(0).mean();
+                                meangyro[1] = initial_alignment_gyro.row(1).mean();
+                                meangyro[2] = initial_alignment_gyro.row(2).mean();
+
+                                Eigen::Quaterniond q_body2world = attitude.inverse();
+                                SubtractEarthRotation(meangyro, q_body2world, location.latitude);
+                                meanacc = meanacc - q_body2world * myfilter.getGravity();
+
+                                if (config.use_inclinometers)
+                                    myfilter.setInitBias (meangyro, Eigen::Matrix<double, 3, 1>::Zero(), meanacc);
+                                else
+                                    myfilter.setInitBias (meangyro, meanacc, Eigen::Matrix<double, 3, 1>::Zero());
+
+                                #ifdef DEBUG_PRINTS
+                                std::cout<< "******** Initial Bias Offset *******"<<"\n";
+                                std::cout<< " Gyroscopes Bias:\n"<<myfilter.getGyroBias()<<"\n";
+                                std::cout<< " Accelerometers Bias:\n"<<myfilter.getAccBias()<<"\n";
+                                std::cout<< " Inclinometers Bias:\n"<<myfilter.getInclBias()<<"\n";
                                 #endif
                             }
                         }
