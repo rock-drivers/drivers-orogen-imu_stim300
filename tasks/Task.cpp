@@ -173,7 +173,6 @@ bool Task::configureHook()
     oldomega.setZero();
 
     /** Initial attitude **/
-    attitude.setIdentity();
     initAttitude = false;
 
     /** Output variable **/
@@ -350,9 +349,9 @@ void Task::updateHook()
 
                                 #ifdef DEBUG_PRINTS
                                 std::cout<< "******** Initial Bias Offset *******"<<"\n";
-                                std::cout<< " Gyroscopes Bias:\n"<<myfilter.getGyroBias()<<"\n";
-                                std::cout<< " Accelerometers Bias:\n"<<myfilter.getAccBias()<<"\n";
-                                std::cout<< " Inclinometers Bias:\n"<<myfilter.getInclBias()<<"\n";
+                                std::cout<< " Gyroscopes Bias Offset:\n"<<myfilter.getGyroBias()<<"\n";
+                                std::cout<< " Accelerometers Bias Offset:\n"<<myfilter.getAccBias()<<"\n";
+                                std::cout<< " Inclinometers Bias Offset:\n"<<myfilter.getInclBias()<<"\n";
                                 #endif
                             }
                         }
@@ -481,7 +480,7 @@ void Task::outputPortSamples(stim300::Stim300Base *driver, filter::Ikf<double, t
     _temp_sensors.write(tempSensor);
 
 
-    if (_use_filter.value())
+    if ((_use_filter.value()) && (state() == RUNNING))
     {
         /** Merge the two delta quaternion **/
         Eigen::AngleAxisd headangle(deltahead);
