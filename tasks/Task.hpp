@@ -235,8 +235,8 @@ namespace stim300 {
 	*
 	* @author Javier Hidalgo Carrio.
 	*
-	* @param[in, out] *u pointer to angular velocity in body frame
-	* @param[in] *q quaternion from body to geographic(world) frame v_body = q_body_2_geo * v_geo
+	* @param[in, out] u angular velocity in body frame
+	* @param[in] q quaternion from body to geographic(world) frame v_body = q_body_2_geo * v_geo
 	* @param[in] latitude location latitude angle in radians
 	*
 	* @return void
