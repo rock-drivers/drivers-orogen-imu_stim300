@@ -283,8 +283,6 @@ void Task::updateHook()
                         meangyro[1] = initial_alignment_gyro.row(1).mean();
                         meangyro[2] = initial_alignment_gyro.row(2).mean();
 
-                        std::cout<< " Mean Gyro:\n"<<meangyro<<"\n Mean Acc:\n"<<meanacc<<"\n";
-
                         if ((base::isnotnan(meanacc)) && (base::isnotnan(meangyro)))
                         {
                             if (meanacc.norm() < (GRAVITY+GRAVITY_MARGING))
@@ -312,11 +310,14 @@ void Task::updateHook()
                                 #endif
 
                                 /** The angular velocity in the local horizontal plane **/
+                                /** Gyro_ho = Tho_body * gyro_body **/
                                 meangyro = attitude * meangyro;
 
                                 /** Determine the heading or azimuthal orientation **/
-                                euler[2] = (double) asin(meangyro[1]/(EARTHW*cos(location.latitude)));
-                                std::cout<<" sin(angle) "<<meangyro[1]/(EARTHW*cos(location.latitude))<<"\n";
+                                if (meangyro[0] == 0.00)
+                                    euler[2] = atan(meangyro[0]/meangyro[1]) - 90.0*D2R;
+                                else
+                                    euler[2] = -atan(meangyro[1]/meangyro[0]);
 
                                 /** Set the attitude  **/
                                 attitude = Eigen::Quaternion <double> (Eigen::AngleAxisd(euler[2], Eigen::Vector3d::UnitZ())*
