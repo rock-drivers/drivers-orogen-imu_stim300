@@ -49,7 +49,8 @@ namespace stim300 {
         bool use_magnetometers;// Some IMUS provides Magnetic information.
                                 // Set to true or false in case you want to correct heading with magnetometers
 
-        unsigned int init_leveling_samples;//Samples to compute the initial leveling of the imu in order to find the gravity vector.
+        unsigned int initial_alignment_samples;// Number of samples to compute the initial alignment of the imu frame to the local geographic coordinate frame.
+                                            // This step involves the gravity vector (leveling) and finding the true North (gyrocompassing).
                                             //Set to zero in case zero attitude is desired as initial orientation from an arbitrary frame.
 
         double correction_frequency; //frequency of the correction step. This will affect the output port frequency of the task

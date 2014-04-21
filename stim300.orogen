@@ -30,10 +30,10 @@ task_context "Task" do
         doc 'the device port'
 
     property('revision', 'stim300::FIRMWARE_REVISIONS').
-        doc 'Firmware revision'
+        doc 'Firmware revision.'
 
     property('baudrate', 'int', 921600).
-        doc 'Baud rate to open the serial com_port and debug_port'
+        doc 'Baud rate to open the serial com_port and debug_port.'
 
     property('timeout', 'double', 8.0).
         doc 'the expected time (in milliseconds) to have a whole package in the fd (the device port)'+
@@ -42,7 +42,7 @@ task_context "Task" do
     property('use_filter', 'bool', true).
         doc 'set to true to active the attitude estimation filter, set false otherwise.'+
         'In true mode inertial sensors output port will be compensated and calibrated values'+
-        'In false mode inertial sensors output will be only calibrated values'
+        'In false mode inertial sensors output will be only calibrated values and no orientation samples will be provided.'
 
     #****************************
     #**** Filter Properties *****
@@ -96,7 +96,9 @@ task_context "Task" do
         doc 'provides timestamped Temperature information for gyros).'
 
     output_port('timestamp_estimator_status', 'aggregator::TimestampEstimatorStatus').
-	doc("Debug output of the TimestampEstimator")
+	doc 'Debug output of the TimestampEstimator.'
+
+    runtime_states :INITIAL_ALIGNMENT
 
     fd_driven
 

@@ -69,13 +69,13 @@ bool Task::configureHook()
     /** Configuration of the attitude filter **/
     /******************************************/
     Eigen::Matrix< double, IKFSTATEVECTORSIZE , 1  > x_0; /** Initial vector state **/
-    Eigen::Matrix3d Ra; /** Measurement noise covariance matrix for acc */
+    Eigen::Matrix3d Ra; /** Measurement noise covariance matrix for accelerometers */
     Eigen::Matrix3d Rg; /** Measurement noise covariance matrix for gyros */
     Eigen::Matrix3d Rm; /** Measurement noise covariance matrix for mag */
     Eigen::Matrix3d Ri; /** Measurement noise covariance matrix for inclinometers */
     Eigen::Matrix <double, IKFSTATEVECTORSIZE, IKFSTATEVECTORSIZE> P_0; /** Initial covariance matrix **/
     Eigen::Matrix3d Qbg; /** Noise for the gyros bias instability **/
-    Eigen::Matrix3d Qba; /** Noise for the acc bias instability **/
+    Eigen::Matrix3d Qba; /** Noise for the accelerometers bias instability **/
     Eigen::Matrix3d Qbi; /** Noise for the inclinometers bias instability **/
     double sqrtdelta_t;
 
@@ -163,10 +163,11 @@ bool Task::configureHook()
             adaptiveconfigInc.M1, adaptiveconfigInc.M2, adaptiveconfigInc.gamma);
 
     /** Leveling configuration **/
-    init_leveling_samples.resize(3, config.init_leveling_samples);
+    initial_alignment_gyro.resize(3, config.initial_alignment_samples);
+    initial_alignment_acc.resize(3, config.initial_alignment_samples);
 
     /** Set the index to Zero **/
-    init_leveling_idx = 0;
+    initial_alignment_idx = 0;
 
     /** Oldomega initial **/
     oldomega.setZero();
@@ -204,7 +205,7 @@ bool Task::startHook()
     if (activity)
     {
         activity->watch(stim300_driver->getFileDescriptor());
-	activity->setTimeout(_timeout);
+	activity->setTimeout(1.5*_timeout);
     }
 
     return true;
@@ -246,54 +247,103 @@ void Task::updateHook()
             if (!initAttitude)
             {
                 #ifdef DEBUG_PRINTS
-                std::cout<<"** [ORIENT_IKF] Initial Attitude["<<init_leveling_idx<<"]\n";
+                std::cout<<"** [ORIENT_IKF] Initial Attitude["<<initial_alignment_idx<<"]\n";
                 #endif
 
+                if (state() != INITIAL_ALIGNMENT)
+                    state(INITIAL_ALIGNMENT);
+
                 if (config.use_inclinometers)
-                    init_leveling_samples.col(init_leveling_idx) = imusamples.mag;
+                    initial_alignment_acc.col(initial_alignment_idx) = imusamples.mag;
                 else
-                    init_leveling_samples.col(init_leveling_idx) = imusamples.acc;
+                    initial_alignment_acc.col(initial_alignment_idx) = imusamples.acc;
 
-                init_leveling_idx++;
+                initial_alignment_gyro.col(initial_alignment_idx) = imusamples.gyro;
 
-                if (init_leveling_idx >= config.init_leveling_samples)
+                initial_alignment_idx++;
+
+                /** Calculate the initial alignment to the local geographic frame **/
+                if (initial_alignment_idx >= config.initial_alignment_samples)
                 {
-                    Eigen::Matrix <double,3,1> meansamples, euler;
 
-                    meansamples[0] = init_leveling_samples.row(0).mean();
-                    meansamples[1] = init_leveling_samples.row(1).mean();
-                    meansamples[2] = init_leveling_samples.row(2).mean();
+                    /** Set attitude to identity **/
+                    attitude.setIdentity();
 
-                    if ((config.init_leveling_samples > 0) && (base::isnotnan(meansamples)) &&(meansamples.norm() < (GRAVITY+GRAVITY_MARGING)))
+                    if (config.initial_alignment_samples > 0)
                     {
-                        euler[0] = (double) asin((double)meansamples[1]/ (double)meansamples.norm()); // Roll
-                        euler[1] = (double) -atan(meansamples[0]/meansamples[2]); //Pitch
-                        euler[2] = 0.00;//Yaw
+                        Eigen::Matrix <double,3,1> meanacc, meangyro;
 
-                        /** Set the initial attitude  **/
-                        attitude = Eigen::Quaternion <double> (Eigen::AngleAxisd(euler[2], Eigen::Vector3d::UnitZ())*
-                            Eigen::AngleAxisd(euler[1], Eigen::Vector3d::UnitY()) *
-                            Eigen::AngleAxisd(euler[0], Eigen::Vector3d::UnitX()));
+                        /** Acceleration **/
+                        meanacc[0] = initial_alignment_acc.row(0).mean();
+                        meanacc[1] = initial_alignment_acc.row(1).mean();
+                        meanacc[2] = initial_alignment_acc.row(2).mean();
 
-                        if (config.use_samples_as_theoretical_gravity)
-                            myfilter.setGravity(meansamples.norm());
-                    }
-                    else
-                    {
-                        attitude.setIdentity();
-                        #ifdef DEBUG_PRINTS
-                        euler[2] = attitude.toRotationMatrix().eulerAngles(2,1,0)[0];//Yaw
-                        euler[1] = attitude.toRotationMatrix().eulerAngles(2,1,0)[1];//Pitch
-                        euler[0] = attitude.toRotationMatrix().eulerAngles(2,1,0)[2];//Roll
-                        #endif
+                        /** Angular velocity **/
+                        meangyro[0] = initial_alignment_gyro.row(0).mean();
+                        meangyro[1] = initial_alignment_gyro.row(1).mean();
+                        meangyro[2] = initial_alignment_gyro.row(2).mean();
+
+                        std::cout<< " Mean Gyro:\n"<<meangyro<<"\n Mean Acc:\n"<<meanacc<<"\n";
+
+                        if ((base::isnotnan(meanacc)) && (base::isnotnan(meangyro)))
+                        {
+                            if (meanacc.norm() < (GRAVITY+GRAVITY_MARGING))
+                            {
+                                Eigen::Matrix <double,3,1> euler;
+                                Eigen::Matrix3d initialM;
+
+                                /** Override the gravity model value with the sensed from the sensors **/
+                                if (config.use_samples_as_theoretical_gravity)
+                                    myfilter.setGravity(meanacc.norm());
+
+                                /** Compute the local horizontal plane **/
+                                euler[0] = (double) asin((double)meanacc[1]/ (double)meanacc.norm()); // Roll
+                                euler[1] = (double) -atan(meanacc[0]/meanacc[2]); //Pitch
+                                euler[2] = 0.00; //Yaw
+
+                                /** Set the attitude  **/
+                                attitude = Eigen::Quaternion <double> (Eigen::AngleAxisd(euler[2], Eigen::Vector3d::UnitZ())*
+                                    Eigen::AngleAxisd(euler[1], Eigen::Vector3d::UnitY()) *
+                                    Eigen::AngleAxisd(euler[0], Eigen::Vector3d::UnitX()));
+
+                                #ifdef DEBUG_PRINTS
+                                std::cout<< "******** Local Horizontal *******"<<"\n";
+                                std::cout<< "Roll: "<<euler[0]*R2D<<" Pitch: "<<euler[1]*R2D<<" Yaw: "<<euler[2]*R2D<<"\n";
+                                #endif
+
+                                /** The angular velocity in the local horizontal plane **/
+                                meangyro = attitude * meangyro;
+
+                                /** Determine the heading or azimuthal orientation **/
+                                euler[2] = (double) asin(meangyro[1]/(EARTHW*cos(location.latitude)));
+                                std::cout<<" sin(angle) "<<meangyro[1]/(EARTHW*cos(location.latitude))<<"\n";
+
+                                /** Set the attitude  **/
+                                attitude = Eigen::Quaternion <double> (Eigen::AngleAxisd(euler[2], Eigen::Vector3d::UnitZ())*
+                                    Eigen::AngleAxisd(euler[1], Eigen::Vector3d::UnitY()) *
+                                    Eigen::AngleAxisd(euler[0], Eigen::Vector3d::UnitX()));
+
+                                #ifdef DEBUG_PRINTS
+                                std::cout<< " Mean Gyro:\n"<<meangyro<<"\n Mean Acc:\n"<<meanacc<<"\n";
+                                std::cout<< " Earth rot * cos(lat): "<<EARTHW*cos(location.latitude)<<"\n";
+                                std::cout<< " Filter Gravity: "<<myfilter.getGravity()[2]<<"\n";
+                                std::cout<< "******** Azimuthal Orientation *******"<<"\n";
+                                std::cout<< " Yaw: "<<euler[2]*R2D<<"\n";
+                                #endif
+                            }
+                        }
                     }
 
                     myfilter.setAttitude(attitude);
                     initAttitude = true;
 
                     #ifdef DEBUG_PRINTS
+                    Eigen::Matrix <double,3,1> eulerprint;
+                    eulerprint[2] = attitude.toRotationMatrix().eulerAngles(2,1,0)[0];//Yaw
+                    eulerprint[1] = attitude.toRotationMatrix().eulerAngles(2,1,0)[1];//Pitch
+                    eulerprint[0] = attitude.toRotationMatrix().eulerAngles(2,1,0)[2];//Roll
                     std::cout<< "******** Initial Attitude  *******"<<"\n";
-                    std::cout<< "Init Roll: "<<euler[0]*R2D<<" Init Pitch: "<<euler[1]*R2D<<" Init Yaw: "<<euler[2]*R2D<<"\n";
+                    std::cout<< "Init Roll: "<<eulerprint[0]*R2D<<" Init Pitch: "<<eulerprint[1]*R2D<<" Init Yaw: "<<eulerprint[2]*R2D<<"\n";
                     #endif
                 }
             }
@@ -303,8 +353,11 @@ void Task::updateHook()
                 Eigen::Vector3d acc, gyro, incl;
                 acc = imusamples.acc; gyro = imusamples.gyro; incl = imusamples.mag;
 
+                if (state() != RUNNING)
+                    state(RUNNING);
+
                 /** Eliminate Earth rotation **/
-                if (config.init_leveling_samples > 0)
+                if (config.initial_alignment_samples > 0)
                 {
                     Eigen::Quaterniond q_body2world = myfilter.getAttitude().inverse();
                     SubtractEarthRotation(gyro, q_body2world, location.latitude);
@@ -325,13 +378,13 @@ void Task::updateHook()
 
                 //stim300_driver->printInfo();
 
-                /** Output information **/
-                this->outputPortSamples(stim300_driver, myfilter, imusamples);
-
                 /** Timestamp estimator status **/
                 _timestamp_estimator_status.write(timestamp_estimator->getStatus());
             }
         }
+
+        /** Output information **/
+        this->outputPortSamples(stim300_driver, myfilter, imusamples);
     }
     else
     {
@@ -400,8 +453,10 @@ void Task::outputPortSamples(stim300::Stim300Base *driver, filter::Ikf<double, t
     tempSensor.time = imusamples.time;
     tempSensor.resize(driver->getTempData().size());
 
+    /** Temperature om the International Units **/
     for (size_t i=0; i<tempSensor.size(); ++i)
         tempSensor.temp[i] = base::Temperature::fromCelsius(stim300_driver->getTempData()[i]);
+
     _temp_sensors.write(tempSensor);
 
 

@@ -6,7 +6,7 @@ filter_configuration:
   use_samples_as_theoretical_gravity: true
   use_inclinometers: true
   use_magnetometers: false
-  init_leveling_samples: 500
+  initial_alignment_samples: 7500
 
 --- name:Bremen
 # Localization properties related to the geographic place (i.e.: latitude, longitude, magnetic declination).

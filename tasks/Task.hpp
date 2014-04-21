@@ -60,7 +60,7 @@ namespace stim300 {
 	bool initAttitude;
 
         /** Index for initializing attitude **/
-        unsigned int init_leveling_idx;
+        unsigned int initial_alignment_idx;
 
         /**************************/
         /*** Property Variables ***/
@@ -97,7 +97,8 @@ namespace stim300 {
 	aggregator::TimestampEstimator* timestamp_estimator;
 
         /** Initial values of Accelerometers/Inclinometers for Pitch and Roll calculation */
-	Eigen::Matrix <double, 3, Eigen::Dynamic> init_leveling_samples;
+	Eigen::Matrix <double, 3, Eigen::Dynamic> initial_alignment_gyro;
+	Eigen::Matrix <double, 3, Eigen::Dynamic> initial_alignment_acc;
 
         filter::Ikf<double, true, true> myfilter; /** The adaptive Indirect Kalman filter */
 
@@ -230,7 +231,7 @@ namespace stim300 {
 	*
 	* This function computes the subtraction of the rotation of the Earth (EARTHW)
 	* from the gyroscope values. This function uses quaternion of transformation from
-	* the geographici to body frame and the latitude in radians.
+	* the geographic to body frame and the latitude in radians.
 	*
 	* @author Javier Hidalgo Carrio.
 	*
