@@ -27,7 +27,8 @@ Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
 
 Task::~Task()
 {
-    delete timestamp_estimator;
+    if (timestamp_estimator != NULL)
+        delete timestamp_estimator;
 }
 
 
@@ -57,6 +58,9 @@ bool Task::configureHook()
 
     /** Set the packageTimeout **/
     stim300_driver->setPackageTimeout((uint64_t)_timeout);
+
+    /** Set the frequency **/
+    stim300_driver->setFrequency(static_cast<uint64_t>(1.0/base::Time::fromMilliseconds(_timeout.value()).toSeconds()));
 
     /** Open the port **/
     if (!stim300_driver->open(_port.value()))
@@ -95,7 +99,7 @@ bool Task::configureHook()
     /*************************************/
     timestamp_estimator = new aggregator::TimestampEstimator(
 	base::Time::fromSeconds(20),
-	base::Time::fromSeconds(_timeout.value()/1000.00),
+	base::Time::fromSeconds(1.0/base::Time::fromMilliseconds(_timeout.value()).toSeconds()),
 	base::Time::fromSeconds(0),
 	INT_MAX);
 
@@ -206,7 +210,7 @@ bool Task::startHook()
     if (activity)
     {
         activity->watch(stim300_driver->getFileDescriptor());
-	activity->setTimeout(1.5*_timeout);
+	activity->setTimeout(_timeout);
     }
 
     return true;
@@ -222,11 +226,12 @@ void Task::updateHook()
     stim300_driver->processPacket();
 
     /** Time is current time minus the latency **/
-    base::Time recvts = base::Time::now() - base::Time::fromMicroseconds(stim300_driver->getPacketLatency());
+    base::Time recvts = base::Time::now();// - base::Time::fromMicroseconds(stim300_driver->getPacketLatency());
 
-    int packet_counter = stim300_driver->getPacketCounter();
+    /** Package counter incrementation **/
+    int64_t packet_counter = stim300_driver->getPacketCounter();
 
-    base::Time ts = timestamp_estimator->update(recvts,packet_counter);
+    base::Time ts = timestamp_estimator->update(recvts, packet_counter);
     base::Time diffTime = ts - prev_ts;
 
     imusamples.time = ts;
@@ -379,6 +384,11 @@ void Task::updateHook()
                 if (state() != RUNNING)
                     state(RUNNING);
 
+                #ifdef DEBUG_PRINTS
+                struct timeval start, end;
+                gettimeofday(&start, NULL);
+                #endif
+
                 /** Eliminate Earth rotation **/
                 Eigen::Quaterniond q_body2world = myfilter.getAttitude().inverse();
                 SubtractEarthRotation(gyro, q_body2world, location.latitude);
@@ -396,7 +406,14 @@ void Task::updateHook()
                 /** Delta quaternion of this step **/
                 deltahead = deltaHeading(gyro, oldomega, delta_t);
 
-                //stim300_driver->printInfo();
+                #ifdef DEBUG_PRINTS
+                gettimeofday(&end, NULL);
+
+                double execution_delta = ((end.tv_sec  - start.tv_sec) * 1000000u + end.tv_usec - start.tv_usec) / 1.e6;
+                std::cout<<"Execution delta:"<< execution_delta<<"\n";
+
+                stim300_driver->printInfo();
+                #endif
 
                 /** Timestamp estimator status **/
                 _timestamp_estimator_status.write(timestamp_estimator->getStatus());
