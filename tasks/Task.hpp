@@ -91,10 +91,16 @@ namespace stim300 {
 
         base::Time prev_ts;
 
+        int correction_numbers, correction_idx;
+
+        double sampling_frequency;
+
         /** Driver variables **/
-	int timeout_counter;
 	stim300::Stim300Base *stim300_driver;
 	aggregator::TimestampEstimator* timestamp_estimator;
+
+        /** Correction  Variables**/
+        Eigen::Vector3d correctionAcc, correctionInc;
 
         /** Initial values of Accelerometers/Inclinometers for Pitch and Roll calculation */
 	Eigen::Matrix <double, 3, Eigen::Dynamic> initial_alignment_gyro;
@@ -281,6 +287,9 @@ namespace stim300 {
 
             return deltaq;
         };
+
+    public:
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     };
 }

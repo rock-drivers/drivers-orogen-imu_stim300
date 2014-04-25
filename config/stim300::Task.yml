@@ -7,6 +7,7 @@ filter_configuration:
   use_inclinometers: true
   use_magnetometers: false
   initial_alignment_samples: 75000
+  correction_frequency: 1.0
 
 --- name:Bremen
 # Localization properties related to the geographic place (i.e.: latitude, longitude, magnetic declination).
@@ -133,13 +134,13 @@ inclinometer_noise:
 # Adaptive estimation of external acceleration.
 adaptive_config_acc:
   M1: 5
-  M2: 25
-  gamma: 0.003
+  M2: 5
+  gamma: 0.001
 
 # Adaptive estimation of external inclinometers.
 adaptive_config_inc:
-  M1: 5
-  M2: 250
+  M1: 10
+  M2: 2
   gamma: 0.003
 
 # Accelerometers Sensors property.

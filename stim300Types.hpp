@@ -53,8 +53,7 @@ namespace stim300 {
                                             // This step involves the gravity vector (leveling) and finding the true North (gyrocompassing).
                                             //Set to zero in case zero attitude is desired as initial orientation from an arbitrary frame.
 
-        double correction_frequency; //frequency of the correction step. This will affect the output port frequency of the task
-                                        //Set to zero or the same sampling frequency to correct at the same time than predict
+        double correction_frequency; //frequency of the correction step.Set to zero or the same sampling frequency to correct at the same time than predict
 
     };
 

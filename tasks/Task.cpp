@@ -3,6 +3,9 @@
 #include "Task.hpp"
 #include <rtt/extras/FileDescriptorActivity.hpp> //for the fd_driven
 
+/** Math only use in the cpp **/
+#include <math.h>
+
 #ifndef D2R
 #define D2R M_PI/180.00 /** Convert degree to radian **/
 #endif
@@ -59,8 +62,11 @@ bool Task::configureHook()
     /** Set the packageTimeout **/
     stim300_driver->setPackageTimeout((uint64_t)_timeout);
 
+    /** Calculate the sampling frequency **/
+    sampling_frequency = 1.0/base::Time::fromMilliseconds(_timeout.value()).toSeconds();
+
     /** Set the frequency **/
-    stim300_driver->setFrequency(static_cast<uint64_t>(1.0/base::Time::fromMilliseconds(_timeout.value()).toSeconds()));
+    stim300_driver->setFrequency(static_cast<uint64_t>(sampling_frequency));
 
     /** Open the port **/
     if (!stim300_driver->open(_port.value()))
@@ -99,14 +105,32 @@ bool Task::configureHook()
     /*************************************/
     timestamp_estimator = new aggregator::TimestampEstimator(
 	base::Time::fromSeconds(20),
-	base::Time::fromSeconds(1.0/base::Time::fromMilliseconds(_timeout.value()).toSeconds()),
+	base::Time::fromSeconds(1.0/sampling_frequency),
 	base::Time::fromSeconds(0),
 	INT_MAX);
+
+    /********************************/
+    /** Configuration frequencies  **/
+    /********************************/
+    if (config.correction_frequency > sampling_frequency)
+    {
+        config.correction_frequency = sampling_frequency;
+        RTT::log(RTT::Warning)<<"[STIM300 FILTER] Set  correction frequency to sampling frequency. It cannot be higher that it!!"<<RTT::endlog();
+    }
+
+    /******************************/
+    /** Correction configuration **/
+    /******************************/
+    correction_numbers = ceil(sampling_frequency/config.correction_frequency);
+    correctionAcc.setZero(); correctionInc.setZero();
 
     /*************************/
     /** Noise configuration **/
     /*************************/
-    sqrtdelta_t = sqrt(1.0/accnoise.bandwidth); /** Noise depends on frequency bandwidth **/
+    if (config.correction_frequency > accnoise.bandwidth)
+        sqrtdelta_t = sqrt(1.0/accnoise.bandwidth); /** Noise depends on frequency bandwidth **/
+    else
+        sqrtdelta_t = sqrt(1.0/config.correction_frequency); /** Noise depends on frequency bandwidth **/
 
     Ra = Eigen::Matrix3d::Zero();
     Ra(0,0) = accnoise.resolution[0] + pow(accnoise.randomwalk[0]/sqrtdelta_t,2);
@@ -120,7 +144,10 @@ bool Task::configureHook()
     Rg(1,1) = pow(gyronoise.randomwalk[1]/sqrtdelta_t,2);
     Rg(2,2) = pow(gyronoise.randomwalk[2]/sqrtdelta_t,2);
 
-    sqrtdelta_t = sqrt(1.0/incnoise.bandwidth); /** Noise depends on frequency bandwidth **/
+    if (config.correction_frequency > incnoise.bandwidth)
+        sqrtdelta_t = sqrt(1.0/incnoise.bandwidth); /** Noise depends on frequency bandwidth **/
+    else
+        sqrtdelta_t = sqrt(1.0/config.correction_frequency); /** Noise depends on frequency bandwidth **/
 
     Ri = Eigen::Matrix3d::Zero();
     Ri(0,0) = incnoise.resolution[0] + pow(incnoise.randomwalk[0]/sqrtdelta_t,2);
@@ -173,6 +200,9 @@ bool Task::configureHook()
     /** Set the index to Zero **/
     initial_alignment_idx = 0;
 
+    /** Set the correction index **/
+    correction_idx = 0;
+
     /** Oldomega initial **/
     oldomega.setZero();
 
@@ -186,6 +216,9 @@ bool Task::configureHook()
     orientationOut.orientation.setIdentity();
 
     #ifdef DEBUG_PRINTS
+    std::cout<< "Sampling frequency: "<<sampling_frequency<<"\n";
+    std::cout<< "Correction frequency: "<<config.correction_frequency<<"\n";
+    std::cout<< "Correction numbers: "<<correction_numbers<<"\n";
     std::cout<< "Rg\n"<<Rg<<"\n";
     std::cout<< "Ra\n"<<Ra<<"\n";
     std::cout<< "Rm\n"<<Rm<<"\n";
@@ -378,8 +411,8 @@ void Task::updateHook()
             else
             {
                 double delta_t = diffTime.toSeconds();
-                Eigen::Vector3d acc, gyro, incl;
-                acc = imusamples.acc; gyro = imusamples.gyro; incl = imusamples.mag;
+                Eigen::Vector3d acc, gyro, inc;
+                acc = imusamples.acc; gyro = imusamples.gyro; inc = imusamples.mag;
 
                 if (state() != RUNNING)
                     state(RUNNING);
@@ -397,8 +430,31 @@ void Task::updateHook()
                 /** Predict **/
                 myfilter.predict(gyro, delta_t);
 
-                /** Update/Correction **/
-                myfilter.update(acc, true, incl, config.use_inclinometers);
+                /** Accumulate correction measurements **/
+                correctionAcc += acc; correctionInc += inc;
+                correction_idx++;
+                #ifdef DEBUG_PRINTS
+                std::cout<<"correction index: "<<correction_idx<<"\n";
+                #endif
+
+                if (correction_idx == correction_numbers)
+                {
+                    acc = correctionAcc / correction_numbers;
+                    inc = correctionInc / correction_numbers;
+
+                    #ifdef DEBUG_PRINTS
+                    std::cout<<"UPDATE\n";
+                    std::cout<<"acc\n"<<acc<<"\n";
+                    std::cout<<"inc\n"<<inc<<"\n";
+                    #endif
+
+                    /** Update/Correction **/
+                    myfilter.update(acc, true, inc, config.use_inclinometers);
+
+                    correctionAcc.setZero();
+                    correctionInc.setZero();
+                    correction_idx = 0.00;
+                }
 
                 /** Delta quaternion of this step **/
                 deltaquat = attitude.inverse() * myfilter.getAttitude();
