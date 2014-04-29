@@ -567,8 +567,8 @@ void Task::outputPortSamples(stim300::Stim300Base *driver, filter::Ikf<double, t
                 Eigen::AngleAxisd(scaleangle[0], Eigen::Vector3d::UnitX()));
 
         orientationOut.time = imusamples.time;
-        //orientationOut.orientation = myfilter.getAttitude();
-        orientationOut.orientation = attitude;
+        orientationOut.orientation = myfilter.getAttitude();
+        //orientationOut.orientation = attitude;
         orientationOut.cov_orientation = Pk.block<3,3>(0,0);
         _orientation_samples_out.write(orientationOut);
 
