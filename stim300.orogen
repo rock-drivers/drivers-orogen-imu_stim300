@@ -99,6 +99,8 @@ task_context "Task" do
 	doc 'Debug output of the TimestampEstimator.'
 
     runtime_states :INITIAL_ALIGNMENT
+    exception_states :NAN_ERROR, :ALIGNMENT_ERROR
+
 
     fd_driven
 

@@ -30,7 +30,7 @@ namespace stim300 {
             IKFSTATEVECTORSIZE = filter::Ikf<double, true, true>::IKFSTATEVECTORSIZE
     };
 
-    static const double GRAVITY_MARGING = 0.3; /** Accepted error for the gravity value **/
+    static const double GRAVITY_MARGIN = 0.3; /** Accepted error for the gravity value in [m/s^2] **/
 
     /*! \class Task 
      * \brief The task context provides and requires services. It uses an ExecutionEngine to perform its functions.
