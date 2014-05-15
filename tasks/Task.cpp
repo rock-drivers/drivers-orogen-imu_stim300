@@ -392,15 +392,19 @@ void Task::updateHook()
                                 std::cout<< " Inclinometers Bias Offset:\n"<<myfilter.getInclBias()<<"\n";
                                 #endif
                             }
-
-                            RTT::log(RTT::Fatal)<<"[STIM300] ERROR in Initial Alignment."<<RTT::endlog();
-                            RTT::log(RTT::Fatal)<<"Gravitational Margin of "<<GRAVITY_MARGIN<<" [m/s^2] exceeded."<<RTT::endlog();
-                            return exception(ALIGNMENT_ERROR);
+                            else
+                            {
+                                RTT::log(RTT::Fatal)<<"[STIM300] ERROR in Initial Alignment. Unable to compute reliable attitude."<<RTT::endlog();
+                                RTT::log(RTT::Fatal)<<"[STIM300] Computed "<< meanacc.norm() <<" [m/s^2] gravitational margin of "<<GRAVITY_MARGIN<<" [m/s^2] has been exceeded."<<RTT::endlog();
+                                return exception(ALIGNMENT_ERROR);
+                            }
                         }
-
-                        RTT::log(RTT::Fatal)<<"[STIM300] ERROR - NaN values in Initial Alignment."<<RTT::endlog();
-                        RTT::log(RTT::Fatal)<<"This might be a configuration error or sensor fault."<<RTT::endlog();
-                        return exception(NAN_ERROR);
+                        else
+                        {
+                            RTT::log(RTT::Fatal)<<"[STIM300] ERROR - NaN values in Initial Alignment."<<RTT::endlog();
+                            RTT::log(RTT::Fatal)<<"[STIM300] This might be a configuration error or sensor fault."<<RTT::endlog();
+                            return exception(NAN_ERROR);
+                        }
                     }
 
                     myfilter.setAttitude(attitude);
