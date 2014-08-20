@@ -15,7 +15,7 @@
 
 //#define DEBUG_PRINTS 1
 
-using namespace stim300;
+using namespace imu_stim300;
 
 Task::Task(std::string const& name)
     : TaskBase(name)
@@ -49,27 +49,27 @@ bool Task::configureHook()
     /*********************************/
     /** Configuration of the driver **/
     /*********************************/
-    if (_revision.value() == stim300::REV_B)
-        stim300_driver = new stim300::Stim300RevB();
-    else if (_revision.value() == stim300::REV_D)
-        stim300_driver = new stim300::Stim300RevD();
+    if (_revision.value() == imu_stim300::REV_B)
+        imu_stim300_driver = new imu_stim300::Stim300RevB();
+    else if (_revision.value() == imu_stim300::REV_D)
+        imu_stim300_driver = new imu_stim300::Stim300RevD();
     else
         throw std::runtime_error("STIM300 Firmware Revision NOT implemented");
 
     /** Set the baudrate to the value in the rock property */
-    stim300_driver->setBaudrate(_baudrate.value());
+    imu_stim300_driver->setBaudrate(_baudrate.value());
 
     /** Set the packageTimeout **/
-    stim300_driver->setPackageTimeout((uint64_t)_timeout);
+    imu_stim300_driver->setPackageTimeout((uint64_t)_timeout);
 
     /** Calculate the sampling frequency **/
     sampling_frequency = 1.0/base::Time::fromMilliseconds(_timeout.value()).toSeconds();
 
     /** Set the frequency **/
-    stim300_driver->setFrequency(static_cast<uint64_t>(sampling_frequency));
+    imu_stim300_driver->setFrequency(static_cast<uint64_t>(sampling_frequency));
 
     /** Open the port **/
-    if (!stim300_driver->open(_port.value()))
+    if (!imu_stim300_driver->open(_port.value()))
     {
         std::cerr << "Error opening device '" << _port.value() << "'" << std::endl;
         return false;
@@ -242,7 +242,7 @@ bool Task::startHook()
         getActivity<RTT::extras::FileDescriptorActivity>();
     if (activity)
     {
-        activity->watch(stim300_driver->getFileDescriptor());
+        activity->watch(imu_stim300_driver->getFileDescriptor());
 	activity->setTimeout(_timeout);
     }
 
@@ -256,13 +256,13 @@ void Task::updateHook()
     TaskBase::updateHook();
 
     /** Process the current package **/
-    stim300_driver->processPacket();
+    imu_stim300_driver->processPacket();
 
     /** Time is current time minus the latency **/
-    base::Time recvts = base::Time::now();// - base::Time::fromMicroseconds(stim300_driver->getPacketLatency());
+    base::Time recvts = base::Time::now();// - base::Time::fromMicroseconds(imu_stim300_driver->getPacketLatency());
 
     /** Package counter incrementation **/
-    int64_t packet_counter = stim300_driver->getPacketCounter();
+    int64_t packet_counter = imu_stim300_driver->getPacketCounter();
 
     base::Time ts = timestamp_estimator->update(recvts, packet_counter);
     base::Time diffTime = ts - prev_ts;
@@ -274,11 +274,11 @@ void Task::updateHook()
     #endif
 
     /** Checksum is good: Take the sensor values from the driver **/
-    if (stim300_driver->getChecksumStatus())// && stim300_driver->getStatus())
+    if (imu_stim300_driver->getChecksumStatus())// && imu_stim300_driver->getStatus())
     {
-        imusamples.gyro = stim300_driver->getGyroData();
-        imusamples.acc = stim300_driver->getAccData();
-        imusamples.mag = stim300_driver->getInclData();//!Short term solution: the mag carries inclinometers info (FINAL SOLUTION REQUIRES: e.g. to change IMUSensor base/types)
+        imusamples.gyro = imu_stim300_driver->getGyroData();
+        imusamples.acc = imu_stim300_driver->getAccData();
+        imusamples.mag = imu_stim300_driver->getInclData();//!Short term solution: the mag carries inclinometers info (FINAL SOLUTION REQUIRES: e.g. to change IMUSensor base/types)
 
         if (_use_filter.value())
         {
@@ -480,7 +480,7 @@ void Task::updateHook()
                 double execution_delta = ((end.tv_sec  - start.tv_sec) * 1000000u + end.tv_usec - start.tv_usec) / 1.e6;
                 std::cout<<"Execution delta:"<< execution_delta<<"\n";
 
-                stim300_driver->printInfo();
+                imu_stim300_driver->printInfo();
                 #endif
 
                 /** Timestamp estimator status **/
@@ -489,7 +489,7 @@ void Task::updateHook()
         }
 
         /** Output information **/
-        this->outputPortSamples(stim300_driver, myfilter, imusamples);
+        this->outputPortSamples(imu_stim300_driver, myfilter, imusamples);
     }
     else
     {
@@ -515,7 +515,7 @@ void Task::stopHook()
 	activity->setTimeout(0);
     }
 
-    stim300_driver->close();
+    imu_stim300_driver->close();
 
     timestamp_estimator->reset();
 }
@@ -523,8 +523,8 @@ void Task::cleanupHook()
 {
     TaskBase::cleanupHook();
 
-    stim300_driver->close();
-    delete stim300_driver;
+    imu_stim300_driver->close();
+    delete imu_stim300_driver;
 
     delete timestamp_estimator;
     timestamp_estimator = NULL;
@@ -548,19 +548,19 @@ Eigen::Quaternion<double> Task::deltaHeading(const Eigen::Vector3d &angvelo, Eig
     return deltahead;
 }
 
-void Task::outputPortSamples(stim300::Stim300Base *driver, filter::Ikf<double, true, true> &myfilter, const base::samples::IMUSensors &imusamples)
+void Task::outputPortSamples(imu_stim300::Stim300Base *driver, filter::Ikf<double, true, true> &myfilter, const base::samples::IMUSensors &imusamples)
 {
     Eigen::Matrix <double,IKFSTATEVECTORSIZE,IKFSTATEVECTORSIZE> Pk = myfilter.getCovariance();
     base::samples::IMUSensors compensatedSamples;
 
     /** Temperature sensors **/
-    stim300::Temperature tempSensor;
+    imu_stim300::Temperature tempSensor;
     tempSensor.time = imusamples.time;
     tempSensor.resize(driver->getTempData().size());
 
     /** Temperature om the International Units **/
     for (size_t i=0; i<tempSensor.size(); ++i)
-        tempSensor.temp[i] = base::Temperature::fromCelsius(stim300_driver->getTempData()[i]);
+        tempSensor.temp[i] = base::Temperature::fromCelsius(imu_stim300_driver->getTempData()[i]);
 
     _temp_sensors.write(tempSensor);
 

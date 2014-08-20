@@ -3,19 +3,19 @@
 #ifndef STIM300_TASK_TASK_HPP
 #define STIM300_TASK_TASK_HPP
 
-#include "stim300/TaskBase.hpp"
+#include "imu_stim300/TaskBase.hpp"
 
 /** Driver library **/
-#include <stim300/Stim300Base.hpp>
-#include <stim300/Stim300RevB.hpp>
-#include <stim300/Stim300RevD.hpp>
+#include <imu_stim300/Stim300Base.hpp>
+#include <imu_stim300/Stim300RevB.hpp>
+#include <imu_stim300/Stim300RevD.hpp>
 
 #include <quater_ikf/Ikf.hpp> /** IKF filter*/
 
 #include <aggregator/TimestampEstimator.hpp>
 #include <rtt/extras/FileDescriptorActivity.hpp>
 
-namespace stim300 {
+namespace imu_stim300 {
 
     /** WGS-84 ellipsoid constants (Nominal Gravity Model and Earth angular velocity) **/
     static const int Re = 6378137; /** Equatorial radius in meters **/
@@ -41,7 +41,7 @@ namespace stim300 {
      * The name of a TaskContext is primarily defined via:
      \verbatim
      deployment 'deployment_name'
-         task('custom_task_name','stim300::Task')
+         task('custom_task_name','imu_stim300::Task')
      end
      \endverbatim
      *  It can be dynamically adapted when the deployment is called with a prefix argument. 
@@ -96,7 +96,7 @@ namespace stim300 {
         double sampling_frequency;
 
         /** Driver variables **/
-	stim300::Stim300Base *stim300_driver;
+	imu_stim300::Stim300Base *imu_stim300_driver;
 	aggregator::TimestampEstimator* timestamp_estimator;
 
         /** Correction  Variables**/
@@ -123,7 +123,7 @@ namespace stim300 {
          * \param name Name of the task. This name needs to be unique to make it identifiable via nameservices.
          * \param initial_state The initial TaskState of the TaskContext. Default is Stopped state.
          */
-         Task(std::string const& name = "stim300::Task");
+         Task(std::string const& name = "imu_stim300::Task");
 	
 	/** TaskContext constructor for Task 
          * \param name Name of the task. This name needs to be unique to make it identifiable for nameservices. 
@@ -202,7 +202,7 @@ namespace stim300 {
 
         /** @brief Port out the values
 	 */
-        void outputPortSamples(stim300::Stim300Base *driver, filter::Ikf<double, true, true> &myfilter, const base::samples::IMUSensors &imusamples);
+        void outputPortSamples(imu_stim300::Stim300Base *driver, filter::Ikf<double, true, true> &myfilter, const base::samples::IMUSensors &imusamples);
 
         /**
 	* @brief This computes the theoretical gravity value according to the WGS-84 ellipsoid Earth model.

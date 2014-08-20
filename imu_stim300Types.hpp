@@ -5,7 +5,7 @@
 #include <base/temperature.h>
 #include <vector>
 
-namespace stim300 {
+namespace imu_stim300 {
 
     /** Sensornor revision names **/
     enum FIRMWARE_REVISIONS{REV_A, REV_B, REV_C, REV_D};
@@ -83,7 +83,7 @@ namespace stim300 {
         double longitude;//Longitude in radians
         double altitude;//Altitude in meters
         double magnetic_declination;//Declination in radians
-        stim300::MAGNETIC_DECLINATION_MODE magnetic_declination_mode;//The declination is positive when the magnetic north is East of true north
+        imu_stim300::MAGNETIC_DECLINATION_MODE magnetic_declination_mode;//The declination is positive when the magnetic north is East of true north
                                                                     //EAST means positive declination and WEST means negative declination.
         double dip_angle;//Dip angle in radians
     };

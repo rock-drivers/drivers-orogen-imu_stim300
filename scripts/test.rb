@@ -11,13 +11,13 @@ ENV['PKG_CONFIG_PATH'] = "#{File.expand_path("..", File.dirname(__FILE__))}/buil
 
 Orocos.initialize
 
-Orocos::Process.run 'stim300::Task' => 'stim300' do
+Orocos::Process.run 'imu_stim300::Task' => 'imu_stim300' do
     # log all the output ports
     Orocos.log_all_ports 
     Orocos.conf.load_dir('../config')
 
     # Get the task
-    driver = Orocos.name_service.get 'stim300'
+    driver = Orocos.name_service.get 'imu_stim300'
     Orocos.conf.apply(driver, ['default','ESTEC','stim300_5g'], :override => true)
 
     driver.port = ARGV[0]
