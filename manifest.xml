@@ -17,5 +17,7 @@
   <depend package="tools/logger" />
   <depend package="drivers/imu_stim300" />
   <depend package="slam/quater_ikf" /> 
-  <depend package="drivers/orogen/aggregator" /> 
+  <depend package="drivers/orogen/aggregator" />
+
+  <tags>stable</tags>
 </package>
