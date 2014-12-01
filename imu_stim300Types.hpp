@@ -3,6 +3,7 @@
 
 #include <base/time.h>
 #include <base/temperature.h>
+#include <base/Eigen.hpp>
 #include <vector>
 
 namespace imu_stim300 {
