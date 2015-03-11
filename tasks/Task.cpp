@@ -437,7 +437,6 @@ void Task::updateHook()
                 /** Eliminate Earth rotation **/
                 Eigen::Quaterniond q_body2world = myfilter.getAttitude().inverse();
                 SubtractEarthRotation(gyro, q_body2world, location.latitude);
-                imusamples.gyro = gyro;
 
                 /** Predict **/
                 myfilter.predict(gyro, delta_t);
@@ -558,7 +557,7 @@ void Task::outputPortSamples(imu_stim300::Stim300Base *driver, filter::Ikf<doubl
     tempSensor.time = imusamples.time;
     tempSensor.resize(driver->getTempData().size());
 
-    /** Temperature om the International Units **/
+    /** Temperature on the International Units **/
     for (size_t i=0; i<tempSensor.size(); ++i)
         tempSensor.temp[i] = base::Temperature::fromCelsius(imu_stim300_driver->getTempData()[i]);
 
@@ -585,8 +584,14 @@ void Task::outputPortSamples(imu_stim300::Stim300Base *driver, filter::Ikf<doubl
         _orientation_samples_out.write(orientationOut);
 
         compensatedSamples = imusamples;
-        compensatedSamples.gyro = imusamples.gyro - myfilter.getGyroBias();//gyros minus bias
-        compensatedSamples.acc = imusamples.acc - myfilter.getAccBias() - myfilter.getGravityinBody(); //acc minus bias and gravity
+
+        if (_compensate_inertial_samples_out.value())
+        {
+            Eigen::Vector3d gyro = imusamples.gyro;
+            SubtractEarthRotation(gyro, orientationOut.orientation.inverse(), location.latitude); //gyros minus Earth rotation
+            compensatedSamples.gyro = gyro - myfilter.getGyroBias();//gyros minus bias
+            compensatedSamples.acc = imusamples.acc - myfilter.getAccBias() - myfilter.getGravityinBody(); //acc minus bias and gravity
+        }
         _calibrated_sensors.write(compensatedSamples);
 
         #ifdef DEBUG_PRINTS

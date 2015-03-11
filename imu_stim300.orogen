@@ -44,6 +44,11 @@ task_context "Task" do
         'In true mode inertial sensors output port will be compensated and calibrated values'+
         'In false mode inertial sensors output will be only calibrated values and no orientation samples will be provided.'
 
+    property('compensate_inertial_samples_out', 'bool', false).
+        doc 'set to true to compensate the driver inertial sensor output_port'+
+        'compensate the inertial samples means correct gyroscopes from bias and Earth rotation' +
+        'and accelerometer from bias and gravity vector. Inclinometers are not affected.'
+
     #****************************
     #**** Filter Properties *****
     #****************************

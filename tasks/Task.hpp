@@ -56,8 +56,8 @@ namespace imu_stim300 {
         /*** Control Flow Variables ***/
         /******************************/
 
-	/** Initial Attitude **/
-	bool initAttitude;
+        /** Initial Attitude **/
+	    bool initAttitude;
 
         /** Index for initializing attitude **/
         unsigned int initial_alignment_idx;
@@ -96,15 +96,15 @@ namespace imu_stim300 {
         double sampling_frequency;
 
         /** Driver variables **/
-	imu_stim300::Stim300Base *imu_stim300_driver;
-	aggregator::TimestampEstimator* timestamp_estimator;
+        imu_stim300::Stim300Base *imu_stim300_driver;
+        aggregator::TimestampEstimator* timestamp_estimator;
 
         /** Correction  Variables**/
         Eigen::Vector3d correctionAcc, correctionInc;
 
         /** Initial values of Accelerometers/Inclinometers for Pitch and Roll calculation */
-	Eigen::Matrix <double, 3, Eigen::Dynamic> initial_alignment_gyro;
-	Eigen::Matrix <double, 3, Eigen::Dynamic> initial_alignment_acc;
+        Eigen::Matrix <double, 3, Eigen::Dynamic> initial_alignment_gyro;
+        Eigen::Matrix <double, 3, Eigen::Dynamic> initial_alignment_acc;
 
         filter::Ikf<double, true, true> myfilter; /** The adaptive Indirect Kalman filter */
 
@@ -125,7 +125,7 @@ namespace imu_stim300 {
          */
          Task(std::string const& name = "imu_stim300::Task");
 	
-	/** TaskContext constructor for Task 
+        /** TaskContext constructor for Task 
          * \param name Name of the task. This name needs to be unique to make it identifiable for nameservices. 
          * \param engine The RTT Execution engine to be used for this task, which serialises the execution of all commands, programs, state machines and incoming events for a task. 
          * 
@@ -134,7 +134,7 @@ namespace imu_stim300 {
 
         /** Default deconstructor of Task
          */
-	~Task();
+        ~Task();
 
         /** This hook is called by Orocos when the state machine transitions
          * from PreOperational to Stopped. If it returns false, then the
