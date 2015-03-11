@@ -467,12 +467,6 @@ void Task::updateHook()
                     correction_idx = 0.00;
                 }
 
-                /** Delta quaternion of this step **/
-                deltaquat = attitude.inverse() * myfilter.getAttitude();
-
-                /** Delta quaternion of this step **/
-                deltahead = deltaHeading(gyro, oldomega, delta_t);
-
                 #ifdef DEBUG_PRINTS
                 gettimeofday(&end, NULL);
 
@@ -566,20 +560,8 @@ void Task::outputPortSamples(imu_stim300::Stim300Base *driver, filter::Ikf<doubl
 
     if ((_use_filter.value()) && (state() == RUNNING))
     {
-        /** Merge the two delta quaternion **/
-        Eigen::AngleAxisd headangle(deltahead);
-        Eigen::AngleAxisd deltaangle(deltaquat);
-        Eigen::Vector3d scaleangle = deltaangle.angle() * deltaangle.axis();
-        scaleangle[2] = (headangle.angle() * headangle.axis())[2];
-
-        /** Update globally attitude **/
-        attitude = attitude * Eigen::Quaternion <double> (Eigen::AngleAxisd(scaleangle[2], Eigen::Vector3d::UnitZ())*
-                Eigen::AngleAxisd(scaleangle[1], Eigen::Vector3d::UnitY()) *
-                Eigen::AngleAxisd(scaleangle[0], Eigen::Vector3d::UnitX()));
-
         orientationOut.time = imusamples.time;
         orientationOut.orientation = myfilter.getAttitude();
-        //orientationOut.orientation = attitude;
         orientationOut.cov_orientation = Pk.block<3,3>(0,0);
         _orientation_samples_out.write(orientationOut);
 
