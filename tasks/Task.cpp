@@ -60,10 +60,10 @@ bool Task::configureHook()
     imu_stim300_driver->setBaudrate(_baudrate.value());
 
     /** Set the packageTimeout **/
-    imu_stim300_driver->setPackageTimeout((uint64_t)_timeout);
+    imu_stim300_driver->setPackageTimeout(static_cast<int64_t>(_timeout));
 
     /** Calculate the sampling frequency **/
-    sampling_frequency = 1.0/base::Time::fromMilliseconds(_timeout.value()).toSeconds();
+    sampling_frequency = 1.0/base::Time::fromSeconds(_timeout.value()).toSeconds();
 
     /** Set the frequency **/
     imu_stim300_driver->setFrequency(static_cast<uint64_t>(sampling_frequency));
@@ -561,7 +561,7 @@ void Task::outputPortSamples(imu_stim300::Stim300Base *driver, filter::Ikf<doubl
     for (size_t i=0; i<tempSensor.size(); ++i)
         tempSensor.temp[i] = base::Temperature::fromCelsius(imu_stim300_driver->getTempData()[i]);
 
-    _temp_sensors.write(tempSensor);
+    _temp_sensors_out.write(tempSensor);
 
 
     if ((_use_filter.value()) && (state() == RUNNING))
