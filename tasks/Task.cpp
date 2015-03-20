@@ -210,10 +210,10 @@ bool Task::configureHook()
     initAttitude = false;
 
     /** Output variable **/
-    orientationOut.invalidate();
-    orientationOut.sourceFrame = config.source_frame_name;
-    orientationOut.targetFrame = config.target_frame_name;
-    orientationOut.orientation.setIdentity();
+    orientation_out.invalidate();
+    orientation_out.sourceFrame = config.source_frame_name;
+    orientation_out.targetFrame = config.target_frame_name;
+    orientation_out.orientation.setIdentity();
 
     #ifdef DEBUG_PRINTS
     std::cout<< "Sampling frequency: "<<sampling_frequency<<"\n";
@@ -541,10 +541,9 @@ Eigen::Quaternion<double> Task::deltaHeading(const Eigen::Vector3d &angvelo, Eig
     return deltahead;
 }
 
-void Task::outputPortSamples(imu_stim300::Stim300Base *driver, filter::Ikf<double, true, true> &myfilter, const base::samples::IMUSensors &imusamples)
+void Task::outputPortSamples(imu_stim300::Stim300Base *driver, filter::Ikf<double, true, true> &myfilter, base::samples::IMUSensors &imusamples)
 {
     Eigen::Matrix <double,IKFSTATEVECTORSIZE,IKFSTATEVECTORSIZE> Pk = myfilter.getCovariance();
-    base::samples::IMUSensors compensatedSamples;
 
     /** Temperature sensors **/
     imu_stim300::Temperature tempSensor;
@@ -558,38 +557,33 @@ void Task::outputPortSamples(imu_stim300::Stim300Base *driver, filter::Ikf<doubl
     _temp_sensors_out.write(tempSensor);
 
 
+    /** Raw calibrated inertial sensor **/
+    _inertial_sensors_out.write(imusamples);
+
     if ((_use_filter.value()) && (state() == RUNNING))
     {
-        orientationOut.time = imusamples.time;
-        orientationOut.orientation = myfilter.getAttitude();
-        orientationOut.cov_orientation = Pk.block<3,3>(0,0);
-        _orientation_samples_out.write(orientationOut);
+        orientation_out.time = imusamples.time;
+        orientation_out.orientation = myfilter.getAttitude();
+        orientation_out.cov_orientation = Pk.block<3,3>(0,0);
+        _orientation_samples_out.write(orientation_out);
 
-        compensatedSamples = imusamples;
-
-        if (_compensate_inertial_samples_out.value())
-        {
-            Eigen::Vector3d gyro = imusamples.gyro;
-            SubtractEarthRotation(gyro, orientationOut.orientation.inverse(), location.latitude); //gyros minus Earth rotation
-            compensatedSamples.gyro = gyro - myfilter.getGyroBias();//gyros minus bias
-            compensatedSamples.acc = imusamples.acc - myfilter.getAccBias() - myfilter.getGravityinBody(); //acc minus bias and gravity
-        }
-        _calibrated_sensors.write(compensatedSamples);
+        /** Compensated and calibrated inertial sensor **/
+        Eigen::Vector3d gyro = imusamples.gyro;
+        SubtractEarthRotation(gyro, orientation_out.orientation.inverse(), location.latitude); //gyros minus Earth rotation
+        imusamples.gyro = gyro - myfilter.getGyroBias();//gyros minus bias
+        imusamples.acc = imusamples.acc - myfilter.getAccBias() - myfilter.getGravityinBody(); //acc minus bias and gravity
+        _compensated_sensors_out.write(imusamples);
 
         #ifdef DEBUG_PRINTS
         Eigen::Vector3d euler;
-        euler[2] = orientationOut.orientation.toRotationMatrix().eulerAngles(2,1,0)[0];//Yaw
-        euler[1] = orientationOut.orientation.toRotationMatrix().eulerAngles(2,1,0)[1];//Pitch
-        euler[0] = orientationOut.orientation.toRotationMatrix().eulerAngles(2,1,0)[2];//Roll
+        euler[2] = orientation_out.orientation.toRotationMatrix().eulerAngles(2,1,0)[0];//Yaw
+        euler[1] = orientation_out.orientation.toRotationMatrix().eulerAngles(2,1,0)[1];//Pitch
+        euler[0] = orientation_out.orientation.toRotationMatrix().eulerAngles(2,1,0)[2];//Roll
         std::cout<< "Roll: "<<euler[0]*R2D<<" Pitch: "<<euler[1]*R2D<<" Yaw: "<<euler[2]*R2D<<"\n";
-        //Eigen::AngleAxisd angleaxis(orientationOut.orientation);
+        //Eigen::AngleAxisd angleaxis(orientation_out.orientation);
         //euler = angleaxis.angle() * angleaxis.axis();
         //std::cout<< "Roll: "<<euler[0]*R2D<<" Pitch: "<<euler[1]*R2D<<" Yaw: "<<euler[2]*R2D<<"\n";
         #endif
-    }
-    else
-    {
-        _calibrated_sensors.write(imusamples);
     }
 
 }

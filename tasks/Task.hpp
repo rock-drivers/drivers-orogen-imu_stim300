@@ -116,7 +116,7 @@ namespace imu_stim300 {
         /** Output port variables **/
         /***************************/
 
-        base::samples::RigidBodyState orientationOut; /** the output orientation **/
+        base::samples::RigidBodyState orientation_out; /** the output orientation **/
 
     public:
         /** TaskContext constructor for Task
@@ -201,8 +201,8 @@ namespace imu_stim300 {
 
 
         /** @brief Port out the values
-	 */
-        void outputPortSamples(imu_stim300::Stim300Base *driver, filter::Ikf<double, true, true> &myfilter, const base::samples::IMUSensors &imusamples);
+	    */
+        void outputPortSamples(imu_stim300::Stim300Base *driver, filter::Ikf<double, true, true> &myfilter, base::samples::IMUSensors &imusamples);
 
         /**
 	* @brief This computes the theoretical gravity value according to the WGS-84 ellipsoid Earth model.
@@ -265,7 +265,7 @@ namespace imu_stim300 {
 	    return;
 	};
 
-        /**
+    /**
 	* @brief Delta quaternion rotation. Integration of small (given by the current angular velo) variation in attitude.
 	*/
         static Eigen::Quaternion<double> deltaQuaternion(const Eigen::Vector3d &angvelo, const Eigen::Matrix4d &oldomega4, const Eigen::Matrix4d &omega4, const double dt)

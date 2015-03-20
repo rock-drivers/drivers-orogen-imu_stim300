@@ -44,11 +44,6 @@ task_context "Task" do
         'In true mode inertial sensors output port will be compensated and calibrated values'+
         'In false mode inertial sensors output will be only calibrated values and no orientation samples will be provided.'
 
-    property('compensate_inertial_samples_out', 'bool', false).
-        doc 'set to true to compensate the driver inertial sensor output_port'+
-        'compensate the inertial samples means correct gyroscopes from bias and Earth rotation' +
-        'and accelerometer from bias and gravity vector. Inclinometers are not affected.'
-
     #****************************
     #**** Filter Properties *****
     #****************************
@@ -89,9 +84,12 @@ task_context "Task" do
     #******************************
     #******* Output Ports *********
     #******************************
-    output_port('calibrated_sensors', '/base/samples/IMUSensors').
-        doc 'provides timestamped IMUReading samples containing the calibrated or compensated sensor readings depending on the mode'+
-        'Calibrated values are temperature corrected as the device reports the values (linear acceleration and angular velocity).'+
+    output_port('inertial_sensors_out', '/base/samples/IMUSensors').
+        doc 'provides timestamped IMUReading samples containing the calibrated sensor readings.'+
+        'Calibrated values are temperature corrected as the device reports the values (linear acceleration and angular velocity).'
+
+    output_port('compensated_sensors_out', '/base/samples/IMUSensors').
+        doc 'provides timestamped IMUReading samples containing the calibrated and compensated sensor readings depending whether the attutide filter is running'+
         'Compensated values are Earth gravity/rotation and bias compensated angular velocity and linear acceleration from the filter.'
 
     output_port('orientation_samples_out', '/base/samples/RigidBodyState').
