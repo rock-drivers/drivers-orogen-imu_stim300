@@ -60,7 +60,7 @@ bool Task::configureHook()
     imu_stim300_driver->setBaudrate(_baudrate.value());
 
     /** Set the packageTimeout **/
-    imu_stim300_driver->setPackageTimeout(static_cast<int64_t>(_timeout));
+    imu_stim300_driver->setPackageTimeout(_timeout.value());
 
     /** Calculate the sampling frequency **/
     sampling_frequency = 1.0/base::Time::fromSeconds(_timeout.value()).toSeconds();
@@ -243,7 +243,7 @@ bool Task::startHook()
     if (activity)
     {
         activity->watch(imu_stim300_driver->getFileDescriptor());
-	activity->setTimeout(_timeout);
+	    activity->setTimeout(_timeout * 1000.00);
     }
 
     return true;
