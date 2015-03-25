@@ -205,69 +205,69 @@ namespace imu_stim300 {
         void outputPortSamples(imu_stim300::Stim300Base *driver, filter::Ikf<double, true, true> &myfilter, base::samples::IMUSensors &imusamples);
 
         /**
-	* @brief This computes the theoretical gravity value according to the WGS-84 ellipsoid Earth model.
-	*
-	* @author Javier Hidalgo Carrio.
-	*
-	* @param[in] latitude double the latitude value in radian
-	* @param[in] altitude double with the altitude value in meters
-	*
-	* @return double. the theoretical value of the local gravity
-	*
-	*/
-	static double GravityModel(double latitude, double altitude)
-	{
-	    double g; /** g magnitude at zero altitude **/
+        * @brief This computes the theoretical gravity value according to the WGS-84 ellipsoid Earth model.
+        *
+        * @author Javier Hidalgo Carrio.
+        *
+        * @param[in] latitude double the latitude value in radian
+        * @param[in] altitude double with the altitude value in meters
+        *
+        * @return double. the theoretical value of the local gravity
+        *
+        */
+        static double GravityModel(double latitude, double altitude)
+        {
+            double g; /** g magnitude at zero altitude **/
 
-	    /** Nominal Gravity model **/
-	    g = GWGS0*((1+GWGS1*pow(sin(latitude),2))/sqrt(1-pow(ECC,2)*pow(sin(latitude),2)));
+            /** Nominal Gravity model **/
+            g = GWGS0*((1+GWGS1*pow(sin(latitude),2))/sqrt(1-pow(ECC,2)*pow(sin(latitude),2)));
 
-	    /** Gravity affects by the altitude (aprox the value r = Re **/
-	    g = g*pow(Re/(Re+altitude), 2);
+            /** Gravity affects by the altitude (aprox the value r = Re **/
+            g = g*pow(Re/(Re+altitude), 2);
+
+                #ifdef DEBUG_PRINTS
+            std::cout<<"[STIM300_CLASS] Theoretical gravity for this location (WGS-84 ellipsoid model): "<< g<<" [m/s^2]\n";
+                #endif
+
+            return g;
+        };
+
+        /**
+        * @brief Subtract the Earth rotation from the gyroscopes readout
+        *
+        * This function computes the subtraction of the rotation of the Earth (EARTHW)
+        * from the gyroscope values. This function uses quaternion of transformation from
+        * the geographic to body frame and the latitude in radians.
+        *
+        * @author Javier Hidalgo Carrio.
+        *
+        * @param[in, out] u angular velocity in body frame
+        * @param[in] q quaternion from body to geographic(world) frame v_body = q_body_2_geo * v_geo
+        * @param[in] latitude location latitude angle in radians
+        *
+        * @return void
+        *
+        */
+        static void SubtractEarthRotation(Eigen::Vector3d &u, const Eigen::Quaterniond &q, const double latitude)
+        {
+            Eigen::Vector3d v (EARTHW*cos(latitude), 0, EARTHW*sin(latitude)); /** vector of earth rotation components expressed in the geographic frame according to the latitude **/
+
+            /** Compute the v vector expressed in the body frame **/
+            v = q * v;
 
             #ifdef DEBUG_PRINTS
-	    std::cout<<"[STIM300_CLASS] Theoretical gravity for this location (WGS-84 ellipsoid model): "<< g<<" [m/s^2]\n";
+            std::cout<<"[STIM300_CLASS] Earth Rotation:"<<v<<"\n";
             #endif
 
-	    return g;
-	};
-	
-	/**
-	* @brief Subtract the Earth rotation from the gyroscopes readout
-	*
-	* This function computes the subtraction of the rotation of the Earth (EARTHW)
-	* from the gyroscope values. This function uses quaternion of transformation from
-	* the geographic to body frame and the latitude in radians.
-	*
-	* @author Javier Hidalgo Carrio.
-	*
-	* @param[in, out] u angular velocity in body frame
-	* @param[in] q quaternion from body to geographic(world) frame v_body = q_body_2_geo * v_geo
-	* @param[in] latitude location latitude angle in radians
-	*
-	* @return void
-	*
-	*/
-	static void SubtractEarthRotation(Eigen::Vector3d &u, const Eigen::Quaterniond &q, const double latitude)
-	{
-	    Eigen::Vector3d v (EARTHW*cos(latitude), 0, EARTHW*sin(latitude)); /** vector of earth rotation components expressed in the geographic frame according to the latitude **/
+            /** Subtract the earth rotation to the vector of inputs (u = u-v**/
+            u  = u - v;
 
-	    /** Compute the v vector expressed in the body frame **/
-	    v = q * v;
+            return;
+        };
 
-	    #ifdef DEBUG_PRINTS
-	    std::cout<<"[STIM300_CLASS] Earth Rotation:"<<v<<"\n";
-	    #endif
-
-	    /** Subtract the earth rotation to the vector of inputs (u = u-v**/
-	    u  = u - v;
-
-	    return;
-	};
-
-    /**
-	* @brief Delta quaternion rotation. Integration of small (given by the current angular velo) variation in attitude.
-	*/
+        /**
+        * @brief Delta quaternion rotation. Integration of small (given by the current angular velo) variation in attitude.
+        */
         static Eigen::Quaternion<double> deltaQuaternion(const Eigen::Vector3d &angvelo, const Eigen::Matrix4d &oldomega4, const Eigen::Matrix4d &omega4, const double dt)
         {
             Eigen::Vector4d quat;
@@ -289,7 +289,7 @@ namespace imu_stim300 {
         };
 
     public:
-        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+            EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     };
 }

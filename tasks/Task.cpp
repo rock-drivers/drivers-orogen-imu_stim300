@@ -324,7 +324,7 @@ void Task::updateHook()
 
                         if ((base::isnotnan(meanacc)) && (base::isnotnan(meangyro)))
                         {
-                            if (meanacc.norm() < (GRAVITY+GRAVITY_MARGIN))
+                            if (meanacc.norm() < (GRAVITY+GRAVITY_MARGIN) && meanacc.norm() > (GRAVITY-GRAVITY_MARGIN))
                             {
                                 Eigen::Matrix <double,3,1> euler;
                                 Eigen::Matrix3d initialM;
@@ -556,7 +556,6 @@ void Task::outputPortSamples(imu_stim300::Stim300Base *driver, filter::Ikf<doubl
 
     _temp_sensors_out.write(tempSensor);
 
-
     /** Raw calibrated inertial sensor **/
     _inertial_sensors_out.write(imusamples);
 
@@ -572,6 +571,7 @@ void Task::outputPortSamples(imu_stim300::Stim300Base *driver, filter::Ikf<doubl
         SubtractEarthRotation(gyro, orientation_out.orientation.inverse(), location.latitude); //gyros minus Earth rotation
         imusamples.gyro = gyro - myfilter.getGyroBias();//gyros minus bias
         imusamples.acc = imusamples.acc - myfilter.getAccBias() - myfilter.getGravityinBody(); //acc minus bias and gravity
+        imusamples.mag = imusamples.mag - myfilter.getInclBias() - myfilter.getGravityinBody(); //inclinometers minus bias and gravity
         _compensated_sensors_out.write(imusamples);
 
         #ifdef DEBUG_PRINTS
