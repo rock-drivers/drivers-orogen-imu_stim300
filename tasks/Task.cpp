@@ -411,12 +411,9 @@ void Task::updateHook()
                     initAttitude = true;
 
                     #ifdef DEBUG_PRINTS
-                    Eigen::Matrix <double,3,1> eulerprint;
-                    eulerprint[2] = attitude.toRotationMatrix().eulerAngles(2,1,0)[0];//Yaw
-                    eulerprint[1] = attitude.toRotationMatrix().eulerAngles(2,1,0)[1];//Pitch
-                    eulerprint[0] = attitude.toRotationMatrix().eulerAngles(2,1,0)[2];//Roll
+                    Eigen::Matrix <double,3,1> eulerprint = base::getEuler(attitude);
                     std::cout<< "******** Initial Attitude  *******"<<"\n";
-                    std::cout<< "Init Roll: "<<eulerprint[0]*R2D<<" Init Pitch: "<<eulerprint[1]*R2D<<" Init Yaw: "<<eulerprint[2]*R2D<<"\n";
+                    std::cout<< "Init Roll: "<<eulerprint[2]*R2D<<" Init Pitch: "<<eulerprint[1]*R2D<<" Init Yaw: "<<eulerprint[0]*R2D<<"\n";
                     #endif
                 }
             }
@@ -575,11 +572,8 @@ void Task::outputPortSamples(imu_stim300::Stim300Base *driver, filter::Ikf<doubl
         _compensated_sensors_out.write(imusamples);
 
         #ifdef DEBUG_PRINTS
-        Eigen::Vector3d euler;
-        euler[2] = orientation_out.orientation.toRotationMatrix().eulerAngles(2,1,0)[0];//Yaw
-        euler[1] = orientation_out.orientation.toRotationMatrix().eulerAngles(2,1,0)[1];//Pitch
-        euler[0] = orientation_out.orientation.toRotationMatrix().eulerAngles(2,1,0)[2];//Roll
-        std::cout<< "Roll: "<<euler[0]*R2D<<" Pitch: "<<euler[1]*R2D<<" Yaw: "<<euler[2]*R2D<<"\n";
+        Eigen::Vector3d euler = base::getEuler(orientation_out.orientation);
+        std::cout<< "Roll: "<<euler[2]*R2D<<" Pitch: "<<euler[1]*R2D<<" Yaw: "<<euler[0]*R2D<<"\n";
         //Eigen::AngleAxisd angleaxis(orientation_out.orientation);
         //euler = angleaxis.angle() * angleaxis.axis();
         //std::cout<< "Roll: "<<euler[0]*R2D<<" Pitch: "<<euler[1]*R2D<<" Yaw: "<<euler[2]*R2D<<"\n";
