@@ -26,12 +26,16 @@ Task::Task(std::string const& name)
 Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
     : TaskBase(name, engine)
 {
+    prev_ts = base::Time::fromSeconds(0.00);
 }
 
 Task::~Task()
 {
     if (timestamp_estimator != NULL)
+    {
         delete timestamp_estimator;
+        timestamp_estimator = NULL;
+    }
 }
 
 
@@ -236,255 +240,277 @@ bool Task::startHook()
     if (! TaskBase::startHook())
         return false;
 
-    // Here, "fd" is the file descriptor of the underlying device
-    // it is usually created in configureHook()
-    RTT::extras::FileDescriptorActivity* activity =
+    RTT::extras::FileDescriptorActivity* fd_activity =
         getActivity<RTT::extras::FileDescriptorActivity>();
-    if (activity)
+
+    // Here, imu_stim300_driver->getFileDescriptor() is the file descriptor of
+    // the underlying device it is usually created in configureHook()
+    if (fd_activity)
     {
-        activity->watch(imu_stim300_driver->getFileDescriptor());
-	    activity->setTimeout(_timeout * 1000.00);
+        fd_activity->watch(imu_stim300_driver->getFileDescriptor());
+	    fd_activity->setTimeout(_timeout * 1000.00);
     }
 
     return true;
 }
 void Task::updateHook()
 {
+    TaskBase::updateHook();
+
     /** Inertial sensor values **/
     base::samples::IMUSensors imusamples;
 
-    TaskBase::updateHook();
+    RTT::extras::FileDescriptorActivity* fd_activity =
+        getActivity<RTT::extras::FileDescriptorActivity>();
 
-    /** Process the current package **/
-    imu_stim300_driver->processPacket();
-
-    /** Time is current time minus the latency **/
-    base::Time recvts = base::Time::now();// - base::Time::fromMicroseconds(imu_stim300_driver->getPacketLatency());
-
-    /** Package counter incrementation **/
-    int64_t packet_counter = imu_stim300_driver->getPacketCounter();
-
-    base::Time ts = timestamp_estimator->update(recvts, packet_counter);
-    base::Time diffTime = ts - prev_ts;
-
-    imusamples.time = ts;
-    prev_ts = ts;
-    #ifdef DEBUG_PRINTS
-    std::cout<<"Delta time[s]: "<<diffTime.toSeconds()<<"\n";
-    #endif
-
-    /** Checksum is good: Take the sensor values from the driver **/
-    if (imu_stim300_driver->getChecksumStatus())// && imu_stim300_driver->getStatus())
+    if (!fd_activity)
     {
-        imusamples.gyro = imu_stim300_driver->getGyroData();
-        imusamples.acc = imu_stim300_driver->getAccData();
-        imusamples.mag = imu_stim300_driver->getInclData();//!Short term solution: the mag carries inclinometers info (FINAL SOLUTION REQUIRES: e.g. to change IMUSensor base/types)
+        throw std::runtime_error("[ERROR] No RTT fd_activity is activated");
+        return;
+    }
 
-        if (_use_filter.value())
-        {
-            /** Attitude filter **/
-            if (!initAttitude)
-            {
-                #ifdef DEBUG_PRINTS
-                std::cout<<"** [ORIENT_IKF] Initial Attitude["<<initial_alignment_idx<<"]\n";
-                #endif
-
-                if (state() != INITIAL_ALIGNMENT)
-                    state(INITIAL_ALIGNMENT);
-
-                if (config.use_inclinometers)
-                    initial_alignment_acc.col(initial_alignment_idx) = imusamples.mag;
-                else
-                    initial_alignment_acc.col(initial_alignment_idx) = imusamples.acc;
-
-                initial_alignment_gyro.col(initial_alignment_idx) = imusamples.gyro;
-
-                initial_alignment_idx++;
-
-                /** Calculate the initial alignment to the local geographic frame **/
-                if (initial_alignment_idx >= config.initial_alignment_samples)
-                {
-
-                    /** Set attitude to identity **/
-                    attitude.setIdentity();
-
-                    if (config.initial_alignment_samples > 0)
-                    {
-                        Eigen::Matrix <double,3,1> meanacc, meangyro;
-
-                        /** Acceleration **/
-                        meanacc[0] = initial_alignment_acc.row(0).mean();
-                        meanacc[1] = initial_alignment_acc.row(1).mean();
-                        meanacc[2] = initial_alignment_acc.row(2).mean();
-
-                        /** Angular velocity **/
-                        meangyro[0] = initial_alignment_gyro.row(0).mean();
-                        meangyro[1] = initial_alignment_gyro.row(1).mean();
-                        meangyro[2] = initial_alignment_gyro.row(2).mean();
-
-                        if ((base::isnotnan(meanacc)) && (base::isnotnan(meangyro)))
-                        {
-                            if (meanacc.norm() < (GRAVITY+GRAVITY_MARGIN) && meanacc.norm() > (GRAVITY-GRAVITY_MARGIN))
-                            {
-                                Eigen::Matrix <double,3,1> euler;
-                                Eigen::Matrix3d initialM;
-
-                                /** Override the gravity model value with the sensed from the sensors **/
-                                if (config.use_samples_as_theoretical_gravity)
-                                    myfilter.setGravity(meanacc.norm());
-
-                                /** Compute the local horizontal plane **/
-                                euler[0] = (double) asin((double)meanacc[1]/ (double)meanacc.norm()); // Roll
-                                euler[1] = (double) -atan(meanacc[0]/meanacc[2]); //Pitch
-                                euler[2] = 0.00; //Yaw
-
-                                /** Set the attitude  **/
-                                attitude = Eigen::Quaternion <double> (Eigen::AngleAxisd(euler[2], Eigen::Vector3d::UnitZ())*
-                                    Eigen::AngleAxisd(euler[1], Eigen::Vector3d::UnitY()) *
-                                    Eigen::AngleAxisd(euler[0], Eigen::Vector3d::UnitX()));
-
-                                #ifdef DEBUG_PRINTS
-                                std::cout<< "******** Local Horizontal *******"<<"\n";
-                                std::cout<< "Roll: "<<euler[0]*R2D<<" Pitch: "<<euler[1]*R2D<<" Yaw: "<<euler[2]*R2D<<"\n";
-                                #endif
-
-                                /** The angular velocity in the local horizontal plane **/
-                                /** Gyro_ho = Tho_body * gyro_body **/
-                                meangyro = attitude * meangyro;
-
-                                /** Determine the heading or azimuthal orientation **/
-                                if (meangyro[0] == 0.00)
-                                    euler[2] = 90.0*D2R - atan(meangyro[0]/meangyro[1]);
-                                else
-                                    euler[2] = atan(meangyro[1]/meangyro[0]);
-
-                                /** Set the attitude  **/
-                                attitude = Eigen::Quaternion <double> (Eigen::AngleAxisd(euler[2], Eigen::Vector3d::UnitZ())*
-                                    Eigen::AngleAxisd(euler[1], Eigen::Vector3d::UnitY()) *
-                                    Eigen::AngleAxisd(euler[0], Eigen::Vector3d::UnitX()));
-
-                                #ifdef DEBUG_PRINTS
-                                std::cout<< " Mean Gyro:\n"<<meangyro<<"\n Mean Acc:\n"<<meanacc<<"\n";
-                                std::cout<< " Earth rot * cos(lat): "<<EARTHW*cos(location.latitude)<<"\n";
-                                std::cout<< " Filter Gravity: "<<myfilter.getGravity()[2]<<"\n";
-                                std::cout<< "******** Azimuthal Orientation *******"<<"\n";
-                                std::cout<< " Yaw: "<<euler[2]*R2D<<"\n";
-                                #endif
-
-                                /** Compute the Initial Bias **/
-                                meangyro[0] = initial_alignment_gyro.row(0).mean();
-                                meangyro[1] = initial_alignment_gyro.row(1).mean();
-                                meangyro[2] = initial_alignment_gyro.row(2).mean();
-
-                                Eigen::Quaterniond q_body2world = attitude.inverse();
-                                SubtractEarthRotation(meangyro, q_body2world, location.latitude);
-                                meanacc = meanacc - q_body2world * myfilter.getGravity();
-
-                                if (config.use_inclinometers)
-                                    myfilter.setInitBias (meangyro, Eigen::Matrix<double, 3, 1>::Zero(), meanacc);
-                                else
-                                    myfilter.setInitBias (meangyro, meanacc, Eigen::Matrix<double, 3, 1>::Zero());
-
-                                #ifdef DEBUG_PRINTS
-                                std::cout<< "******** Initial Bias Offset *******"<<"\n";
-                                std::cout<< " Gyroscopes Bias Offset:\n"<<myfilter.getGyroBias()<<"\n";
-                                std::cout<< " Accelerometers Bias Offset:\n"<<myfilter.getAccBias()<<"\n";
-                                std::cout<< " Inclinometers Bias Offset:\n"<<myfilter.getInclBias()<<"\n";
-                                #endif
-                            }
-                            else
-                            {
-                                RTT::log(RTT::Fatal)<<"[STIM300] ERROR in Initial Alignment. Unable to compute reliable attitude."<<RTT::endlog();
-                                RTT::log(RTT::Fatal)<<"[STIM300] Computed "<< meanacc.norm() <<" [m/s^2] gravitational margin of "<<GRAVITY_MARGIN<<" [m/s^2] has been exceeded."<<RTT::endlog();
-                                return exception(ALIGNMENT_ERROR);
-                            }
-                        }
-                        else
-                        {
-                            RTT::log(RTT::Fatal)<<"[STIM300] ERROR - NaN values in Initial Alignment."<<RTT::endlog();
-                            RTT::log(RTT::Fatal)<<"[STIM300] This might be a configuration error or sensor fault."<<RTT::endlog();
-                            return exception(NAN_ERROR);
-                        }
-                    }
-
-                    myfilter.setAttitude(attitude);
-                    initAttitude = true;
-
-                    #ifdef DEBUG_PRINTS
-                    Eigen::Matrix <double,3,1> eulerprint = base::getEuler(attitude);
-                    std::cout<< "******** Initial Attitude  *******"<<"\n";
-                    std::cout<< "Init Roll: "<<eulerprint[2]*R2D<<" Init Pitch: "<<eulerprint[1]*R2D<<" Init Yaw: "<<eulerprint[0]*R2D<<"\n";
-                    #endif
-                }
-            }
-            else
-            {
-                double delta_t = diffTime.toSeconds();
-                Eigen::Vector3d acc, gyro, inc;
-                acc = imusamples.acc; gyro = imusamples.gyro; inc = imusamples.mag;
-
-                if (state() != RUNNING)
-                    state(RUNNING);
-
-                #ifdef DEBUG_PRINTS
-                struct timeval start, end;
-                gettimeofday(&start, NULL);
-                #endif
-
-                /** Eliminate Earth rotation **/
-                Eigen::Quaterniond q_body2world = myfilter.getAttitude().inverse();
-                SubtractEarthRotation(gyro, q_body2world, location.latitude);
-
-                /** Predict **/
-                myfilter.predict(gyro, delta_t);
-
-                /** Accumulate correction measurements **/
-                correctionAcc += acc; correctionInc += inc;
-                correction_idx++;
-                #ifdef DEBUG_PRINTS
-                std::cout<<"correction index: "<<correction_idx<<"\n";
-                #endif
-
-                if (correction_idx == correction_numbers)
-                {
-                    acc = correctionAcc / correction_numbers;
-                    inc = correctionInc / correction_numbers;
-
-                    #ifdef DEBUG_PRINTS
-                    std::cout<<"UPDATE\n";
-                    std::cout<<"acc\n"<<acc<<"\n";
-                    std::cout<<"inc\n"<<inc<<"\n";
-                    #endif
-
-                    /** Update/Correction **/
-                    myfilter.update(acc, true, inc, config.use_inclinometers);
-
-                    correctionAcc.setZero();
-                    correctionInc.setZero();
-                    correction_idx = 0.00;
-                }
-
-                #ifdef DEBUG_PRINTS
-                gettimeofday(&end, NULL);
-
-                double execution_delta = ((end.tv_sec  - start.tv_sec) * 1000000u + end.tv_usec - start.tv_usec) / 1.e6;
-                std::cout<<"Execution delta:"<< execution_delta<<"\n";
-
-                imu_stim300_driver->printInfo();
-                #endif
-
-                /** Timestamp estimator status **/
-                _timestamp_estimator_status.write(timestamp_estimator->getStatus());
-            }
-        }
-
-        /** Output information **/
-        this->outputPortSamples(imu_stim300_driver, myfilter, imusamples);
+    if (fd_activity->hasError())
+    {
+        RTT::log(RTT::Fatal)<<"[STIM300] ERROR in fd_activity."<<RTT::endlog();
+    }
+    else if (fd_activity->hasTimeout())
+    {
+        RTT::log(RTT::Info)<<"[STIM300] Timeout in fd_activity."<<RTT::endlog();
     }
     else
     {
-        //std::cout<<"STIM300 Checksum error\n";
-        RTT::log(RTT::Fatal)<<"[STIM300] Datagram Checksum ERROR."<<RTT::endlog();
+
+        /** Process the current package **/
+        imu_stim300_driver->processPacket();
+
+        /** Time is current time minus the latency **/
+        base::Time recvts = base::Time::now();// - base::Time::fromMicroseconds(imu_stim300_driver->getPacketLatency());
+
+        /** Package counter incrementation **/
+        int64_t packet_counter = imu_stim300_driver->getPacketCounter();
+
+        base::Time ts = timestamp_estimator->update(recvts, packet_counter);
+        base::Time diffTime = ts - prev_ts;
+
+        imusamples.time = ts;
+        prev_ts = ts;
+        #ifdef DEBUG_PRINTS
+        std::cout<<"Delta time[s]: "<<diffTime.toSeconds()<<"\n";
+        #endif
+
+        /** Checksum is good: Take the sensor values from the driver **/
+        if (imu_stim300_driver->getChecksumStatus())// && imu_stim300_driver->getStatus())
+        {
+            imusamples.gyro = imu_stim300_driver->getGyroData();
+            imusamples.acc = imu_stim300_driver->getAccData();
+            imusamples.mag = imu_stim300_driver->getInclData();//!Short term solution: the mag carries inclinometers info (FINAL SOLUTION REQUIRES: e.g. to change IMUSensor base/types)
+
+            if (_use_filter.value())
+            {
+                /** Attitude filter **/
+                if (!initAttitude)
+                {
+                    #ifdef DEBUG_PRINTS
+                    std::cout<<"** [ORIENT_IKF] Initial Attitude["<<initial_alignment_idx<<"]\n";
+                    #endif
+
+                    if (state() != INITIAL_ALIGNMENT)
+                        state(INITIAL_ALIGNMENT);
+
+                    if (config.use_inclinometers)
+                        initial_alignment_acc.col(initial_alignment_idx) = imusamples.mag;
+                    else
+                        initial_alignment_acc.col(initial_alignment_idx) = imusamples.acc;
+
+                    initial_alignment_gyro.col(initial_alignment_idx) = imusamples.gyro;
+
+                    initial_alignment_idx++;
+
+                    /** Calculate the initial alignment to the local geographic frame **/
+                    if (initial_alignment_idx >= config.initial_alignment_samples)
+                    {
+
+                        /** Set attitude to identity **/
+                        attitude.setIdentity();
+
+                        if (config.initial_alignment_samples > 0)
+                        {
+                            Eigen::Matrix <double,3,1> meanacc, meangyro;
+
+                            /** Acceleration **/
+                            meanacc[0] = initial_alignment_acc.row(0).mean();
+                            meanacc[1] = initial_alignment_acc.row(1).mean();
+                            meanacc[2] = initial_alignment_acc.row(2).mean();
+
+                            /** Angular velocity **/
+                            meangyro[0] = initial_alignment_gyro.row(0).mean();
+                            meangyro[1] = initial_alignment_gyro.row(1).mean();
+                            meangyro[2] = initial_alignment_gyro.row(2).mean();
+
+                            if ((base::isnotnan(meanacc)) && (base::isnotnan(meangyro)))
+                            {
+                                if (meanacc.norm() < (GRAVITY+GRAVITY_MARGIN) && meanacc.norm() > (GRAVITY-GRAVITY_MARGIN))
+                                {
+                                    Eigen::Matrix <double,3,1> euler;
+                                    Eigen::Matrix3d initialM;
+
+                                    /** Override the gravity model value with the sensed from the sensors **/
+                                    if (config.use_samples_as_theoretical_gravity)
+                                        myfilter.setGravity(meanacc.norm());
+
+                                    /** Compute the local horizontal plane **/
+                                    euler[0] = (double) asin((double)meanacc[1]/ (double)meanacc.norm()); // Roll
+                                    euler[1] = (double) -atan(meanacc[0]/meanacc[2]); //Pitch
+                                    euler[2] = 0.00; //Yaw
+
+                                    /** Set the attitude  **/
+                                    attitude = Eigen::Quaternion <double> (Eigen::AngleAxisd(euler[2], Eigen::Vector3d::UnitZ())*
+                                        Eigen::AngleAxisd(euler[1], Eigen::Vector3d::UnitY()) *
+                                        Eigen::AngleAxisd(euler[0], Eigen::Vector3d::UnitX()));
+
+                                    #ifdef DEBUG_PRINTS
+                                    std::cout<< "******** Local Horizontal *******"<<"\n";
+                                    std::cout<< "Roll: "<<euler[0]*R2D<<" Pitch: "<<euler[1]*R2D<<" Yaw: "<<euler[2]*R2D<<"\n";
+                                    #endif
+
+                                    /** The angular velocity in the local horizontal plane **/
+                                    /** Gyro_ho = Tho_body * gyro_body **/
+                                    meangyro = attitude * meangyro;
+
+                                    /** Determine the heading or azimuthal orientation **/
+                                    if (meangyro[0] == 0.00)
+                                        euler[2] = 90.0*D2R - atan(meangyro[0]/meangyro[1]);
+                                    else
+                                        euler[2] = atan(meangyro[1]/meangyro[0]);
+
+                                    /** Set the attitude  **/
+                                    attitude = Eigen::Quaternion <double> (Eigen::AngleAxisd(euler[2], Eigen::Vector3d::UnitZ())*
+                                        Eigen::AngleAxisd(euler[1], Eigen::Vector3d::UnitY()) *
+                                        Eigen::AngleAxisd(euler[0], Eigen::Vector3d::UnitX()));
+
+                                    #ifdef DEBUG_PRINTS
+                                    std::cout<< " Mean Gyro:\n"<<meangyro<<"\n Mean Acc:\n"<<meanacc<<"\n";
+                                    std::cout<< " Earth rot * cos(lat): "<<EARTHW*cos(location.latitude)<<"\n";
+                                    std::cout<< " Filter Gravity: "<<myfilter.getGravity()[2]<<"\n";
+                                    std::cout<< "******** Azimuthal Orientation *******"<<"\n";
+                                    std::cout<< " Yaw: "<<euler[2]*R2D<<"\n";
+                                    #endif
+
+                                    /** Compute the Initial Bias **/
+                                    meangyro[0] = initial_alignment_gyro.row(0).mean();
+                                    meangyro[1] = initial_alignment_gyro.row(1).mean();
+                                    meangyro[2] = initial_alignment_gyro.row(2).mean();
+
+                                    Eigen::Quaterniond q_body2world = attitude.inverse();
+                                    SubtractEarthRotation(meangyro, q_body2world, location.latitude);
+                                    meanacc = meanacc - q_body2world * myfilter.getGravity();
+
+                                    if (config.use_inclinometers)
+                                        myfilter.setInitBias (meangyro, Eigen::Matrix<double, 3, 1>::Zero(), meanacc);
+                                    else
+                                        myfilter.setInitBias (meangyro, meanacc, Eigen::Matrix<double, 3, 1>::Zero());
+
+                                    #ifdef DEBUG_PRINTS
+                                    std::cout<< "******** Initial Bias Offset *******"<<"\n";
+                                    std::cout<< " Gyroscopes Bias Offset:\n"<<myfilter.getGyroBias()<<"\n";
+                                    std::cout<< " Accelerometers Bias Offset:\n"<<myfilter.getAccBias()<<"\n";
+                                    std::cout<< " Inclinometers Bias Offset:\n"<<myfilter.getInclBias()<<"\n";
+                                    #endif
+                                }
+                                else
+                                {
+                                    RTT::log(RTT::Fatal)<<"[STIM300] ERROR in Initial Alignment. Unable to compute reliable attitude."<<RTT::endlog();
+                                    RTT::log(RTT::Fatal)<<"[STIM300] Computed "<< meanacc.norm() <<" [m/s^2] gravitational margin of "<<GRAVITY_MARGIN<<" [m/s^2] has been exceeded."<<RTT::endlog();
+                                    return exception(ALIGNMENT_ERROR);
+                                }
+                            }
+                            else
+                            {
+                                RTT::log(RTT::Fatal)<<"[STIM300] ERROR - NaN values in Initial Alignment."<<RTT::endlog();
+                                RTT::log(RTT::Fatal)<<"[STIM300] This might be a configuration error or sensor fault."<<RTT::endlog();
+                                return exception(NAN_ERROR);
+                            }
+                        }
+
+                        myfilter.setAttitude(attitude);
+                        initAttitude = true;
+
+                        #ifdef DEBUG_PRINTS
+                        Eigen::Matrix <double,3,1> eulerprint = base::getEuler(attitude);
+                        std::cout<< "******** Initial Attitude  *******"<<"\n";
+                        std::cout<< "Init Roll: "<<eulerprint[2]*R2D<<" Init Pitch: "<<eulerprint[1]*R2D<<" Init Yaw: "<<eulerprint[0]*R2D<<"\n";
+                        #endif
+                    }
+                }
+                else
+                {
+                    double delta_t = diffTime.toSeconds();
+                    Eigen::Vector3d acc, gyro, inc;
+                    acc = imusamples.acc; gyro = imusamples.gyro; inc = imusamples.mag;
+
+                    if (state() != RUNNING)
+                        state(RUNNING);
+
+                    #ifdef DEBUG_PRINTS
+                    struct timeval start, end;
+                    gettimeofday(&start, NULL);
+                    #endif
+
+                    /** Eliminate Earth rotation **/
+                    Eigen::Quaterniond q_body2world = myfilter.getAttitude().inverse();
+                    SubtractEarthRotation(gyro, q_body2world, location.latitude);
+
+                    /** Predict **/
+                    myfilter.predict(gyro, delta_t);
+
+                    /** Accumulate correction measurements **/
+                    correctionAcc += acc; correctionInc += inc;
+                    correction_idx++;
+                    #ifdef DEBUG_PRINTS
+                    std::cout<<"correction index: "<<correction_idx<<"\n";
+                    #endif
+
+                    if (correction_idx == correction_numbers)
+                    {
+                        acc = correctionAcc / correction_numbers;
+                        inc = correctionInc / correction_numbers;
+
+                        #ifdef DEBUG_PRINTS
+                        std::cout<<"UPDATE\n";
+                        std::cout<<"acc\n"<<acc<<"\n";
+                        std::cout<<"inc\n"<<inc<<"\n";
+                        #endif
+
+                        /** Update/Correction **/
+                        myfilter.update(acc, true, inc, config.use_inclinometers);
+
+                        correctionAcc.setZero();
+                        correctionInc.setZero();
+                        correction_idx = 0.00;
+                    }
+
+                    #ifdef DEBUG_PRINTS
+                    gettimeofday(&end, NULL);
+
+                    double execution_delta = ((end.tv_sec  - start.tv_sec) * 1000000u + end.tv_usec - start.tv_usec) / 1.e6;
+                    std::cout<<"Execution delta:"<< execution_delta<<"\n";
+
+                    imu_stim300_driver->printInfo();
+                    #endif
+
+                    /** Timestamp estimator status **/
+                    _timestamp_estimator_status.write(timestamp_estimator->getStatus());
+                }
+            }
+
+            /** Output information **/
+            this->outputPortSamples(imu_stim300_driver, myfilter, imusamples);
+        }
+        else
+        {
+            //std::cout<<"STIM300 Checksum error\n";
+            RTT::log(RTT::Fatal)<<"[STIM300] Datagram Checksum ERROR."<<RTT::endlog();
+        }
     }
 }
 
@@ -496,13 +522,15 @@ void Task::stopHook()
 {
     TaskBase::stopHook();
 
-    RTT::extras::FileDescriptorActivity* activity =
+    RTT::extras::FileDescriptorActivity* fd_activity =
         getActivity<RTT::extras::FileDescriptorActivity>();
-    if (activity)
+
+    if (fd_activity)
     {
-        activity->clearAllWatches();
+        fd_activity->clearAllWatches();
+
         //set timeout back so we don't timeout on the rtt's pipe
-	activity->setTimeout(0);
+        fd_activity->setTimeout(0);
     }
 
     imu_stim300_driver->close();
@@ -526,9 +554,9 @@ Eigen::Quaternion<double> Task::deltaHeading(const Eigen::Vector3d &angvelo, Eig
     Eigen::Quaternion<double> deltahead;
 
     omega << 0,-angvelo(0), -angvelo(1), -angvelo(2),
-		angvelo(0), 0, angvelo(2), -angvelo(1),
-		angvelo(1), -angvelo(2), 0, angvelo(0),
-		angvelo(2), angvelo(1), -angvelo(0), 0;
+    angvelo(0), 0, angvelo(2), -angvelo(1),
+    angvelo(1), -angvelo(2), 0, angvelo(0),
+    angvelo(2), angvelo(1), -angvelo(0), 0;
 
 
     deltahead = deltaQuaternion(angvelo, oldomega, omega, delta_t);
