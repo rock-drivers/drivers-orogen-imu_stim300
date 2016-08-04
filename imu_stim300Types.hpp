@@ -1,8 +1,8 @@
 #ifndef STIM300_TYPE_HPP
 #define STIM300_TYPE_HPP
 
-#include <base/time.h>
-#include <base/temperature.h>
+#include <base/Time.hpp>
+#include <base/Temperature.hpp>
 #include <base/Eigen.hpp>
 #include <vector>
 
