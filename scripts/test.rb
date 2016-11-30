@@ -22,7 +22,7 @@ Orocos::Process.run 'imu_stim300::Task' => 'imu_stim300' do
 
     driver.port = ARGV[0]
     driver.revision = 'REV_D'
-    driver.timeout = 0.008
+    driver.timeout = 0.010
     driver.use_filter = true
 
     driver.configure

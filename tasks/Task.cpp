@@ -358,48 +358,70 @@ void Task::updateHook()
                                     if (config.use_samples_as_theoretical_gravity)
                                         myfilter.setGravity(meanacc.norm());
 
-                                    /** Compute the local horizontal plane **/
+                                    /**********************************************************************************************************************/
+                                    /** Commented the code for initial estimation of attitude. Using the given initial heading from config value instead **/
+                                    /**********************************************************************************************************************/
+
+//                                    /** Compute the local horizontal plane **/
+//                                    euler[0] = (double) asin((double)meanacc[1]/ (double)meanacc.norm()); // Roll
+//                                    euler[1] = (double) -atan(meanacc[0]/meanacc[2]); //Pitch
+//                                    euler[2] = 0.00; //Yaw
+//
+//                                    /** Set the attitude  **/
+//                                    attitude = Eigen::Quaternion <double> (Eigen::AngleAxisd(euler[2], Eigen::Vector3d::UnitZ())*
+//                                        Eigen::AngleAxisd(euler[1], Eigen::Vector3d::UnitY()) *
+//                                        Eigen::AngleAxisd(euler[0], Eigen::Vector3d::UnitX()));
+//
+//                                    #ifdef DEBUG_PRINTS
+//                                    std::cout<< "******** Local Horizontal *******"<<"\n";
+//                                    std::cout<< "Roll: "<<euler[0]*R2D<<" Pitch: "<<euler[1]*R2D<<" Yaw: "<<euler[2]*R2D<<"\n";
+//                                    #endif
+//
+//                                    /** The angular velocity in the local horizontal plane **/
+//                                    /** Gyro_ho = Tho_body * gyro_body **/
+//                                    meangyro = attitude * meangyro;
+//
+//                                    /** Determine the heading or azimuthal orientation **/
+//                                    if (meangyro[0] == 0.00)
+//                                        euler[2] = 90.0*D2R - atan(meangyro[0]/meangyro[1]);
+//                                    else
+//                                        euler[2] = atan(meangyro[1]/meangyro[0]);
+//
+//                                    /** Set the attitude  **/
+//                                    attitude = Eigen::Quaternion <double> (Eigen::AngleAxisd(euler[2], Eigen::Vector3d::UnitZ())*
+//                                        Eigen::AngleAxisd(euler[1], Eigen::Vector3d::UnitY()) *
+//                                        Eigen::AngleAxisd(euler[0], Eigen::Vector3d::UnitX()));
+//
+//                                    #ifdef DEBUG_PRINTS
+//                                    std::cout<< " Mean Gyro:\n"<<meangyro<<"\n Mean Acc:\n"<<meanacc<<"\n";
+//                                    std::cout<< " Earth rot * cos(lat): "<<EARTHW*cos(location.latitude)<<"\n";
+//                                    std::cout<< " Filter Gravity: "<<myfilter.getGravity()[2]<<"\n";
+//                                    std::cout<< "******** Azimuthal Orientation *******"<<"\n";
+//                                    std::cout<< " Yaw: "<<euler[2]*R2D<<"\n";
+//                                    #endif
+//
+//                                    /** Compute the Initial Bias **/
+//                                    meangyro[0] = initial_alignment_gyro.row(0).mean();
+//                                    meangyro[1] = initial_alignment_gyro.row(1).mean();
+//                                    meangyro[2] = initial_alignment_gyro.row(2).mean();
+
+                                    /****************************************************************************************/
+                                    /** End of commented block for initial estimation of attitude. Start of inserted block **/
+                                    /****************************************************************************************/
+
+                                    /** Compute the initial attitude for Roll and Pitch and use the config value for Yaw **/
                                     euler[0] = (double) asin((double)meanacc[1]/ (double)meanacc.norm()); // Roll
                                     euler[1] = (double) -atan(meanacc[0]/meanacc[2]); //Pitch
-                                    euler[2] = 0.00; //Yaw
+                                    euler[2] = _init_heading.value()*D2R; //Yaw
 
                                     /** Set the attitude  **/
                                     attitude = Eigen::Quaternion <double> (Eigen::AngleAxisd(euler[2], Eigen::Vector3d::UnitZ())*
                                         Eigen::AngleAxisd(euler[1], Eigen::Vector3d::UnitY()) *
                                         Eigen::AngleAxisd(euler[0], Eigen::Vector3d::UnitX()));
 
-                                    #ifdef DEBUG_PRINTS
-                                    std::cout<< "******** Local Horizontal *******"<<"\n";
-                                    std::cout<< "Roll: "<<euler[0]*R2D<<" Pitch: "<<euler[1]*R2D<<" Yaw: "<<euler[2]*R2D<<"\n";
-                                    #endif
-
-                                    /** The angular velocity in the local horizontal plane **/
-                                    /** Gyro_ho = Tho_body * gyro_body **/
-                                    meangyro = attitude * meangyro;
-
-                                    /** Determine the heading or azimuthal orientation **/
-                                    if (meangyro[0] == 0.00)
-                                        euler[2] = 90.0*D2R - atan(meangyro[0]/meangyro[1]);
-                                    else
-                                        euler[2] = atan(meangyro[1]/meangyro[0]);
-
-                                    /** Set the attitude  **/
-                                    attitude = Eigen::Quaternion <double> (Eigen::AngleAxisd(euler[2], Eigen::Vector3d::UnitZ())*
-                                        Eigen::AngleAxisd(euler[1], Eigen::Vector3d::UnitY()) *
-                                        Eigen::AngleAxisd(euler[0], Eigen::Vector3d::UnitX()));
-
-                                    #ifdef DEBUG_PRINTS
-                                    std::cout<< " Mean Gyro:\n"<<meangyro<<"\n Mean Acc:\n"<<meanacc<<"\n";
-                                    std::cout<< " Earth rot * cos(lat): "<<EARTHW*cos(location.latitude)<<"\n";
-                                    std::cout<< " Filter Gravity: "<<myfilter.getGravity()[2]<<"\n";
-                                    std::cout<< "******** Azimuthal Orientation *******"<<"\n";
-                                    std::cout<< " Yaw: "<<euler[2]*R2D<<"\n";
-                                    #endif
-
-                                    /** Compute the Initial Bias **/
-                                    meangyro[0] = initial_alignment_gyro.row(0).mean();
-                                    meangyro[1] = initial_alignment_gyro.row(1).mean();
-                                    meangyro[2] = initial_alignment_gyro.row(2).mean();
+                                    /********************************************************/
+                                    /** End of inserted block for setting initial attitude **/
+                                    /********************************************************/
 
                                     Eigen::Quaterniond q_body2world = attitude.inverse();
                                     SubtractEarthRotation(meangyro, q_body2world, location.latitude);
