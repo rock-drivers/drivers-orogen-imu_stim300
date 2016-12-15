@@ -62,6 +62,15 @@ task_context "Task" do
     property('inclinometer_noise','imu_stim300/InertialNoiseParameters').
         doc 'Inertial Sensors property.'
 
+    property('use_input_bias', 'bool', false).
+        doc 'set to true to take the estimated bias values of the sensors through config values.'
+
+    property('biasacc','/std/vector<double>').
+        doc '3 values of estimated bias. Axis order is X, Y, Z'
+
+    property('biasgyro','/std/vector<double>').
+        doc '3 values of estimated bias. Axis order is X, Y, Z'
+
     #****************************
     #**** Adaptive Properties ***
     #****************************

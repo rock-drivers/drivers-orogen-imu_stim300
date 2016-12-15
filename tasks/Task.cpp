@@ -5,6 +5,7 @@
 
 /** Math only use in the cpp **/
 #include <math.h>
+#include <fstream>
 
 #ifndef D2R
 #define D2R M_PI/180.00 /** Convert degree to radian **/
@@ -427,6 +428,18 @@ void Task::updateHook()
                                     SubtractEarthRotation(meangyro, q_body2world, location.latitude);
                                     meanacc = meanacc - q_body2world * myfilter.getGravity();
 
+                                    if (_use_input_bias.value())
+                                    {
+                                        std::vector<double> biasacc=_biasacc.value();
+                                        std::vector<double> biasgyro=_biasgyro.value();
+
+                                        for (int i=0;i<3;i++)
+                                        {
+                                            meanacc[i]=biasacc[i];
+                                            meangyro[i]=biasgyro[i];
+                                        }
+                                    }
+
                                     if (config.use_inclinometers)
                                         myfilter.setInitBias (meangyro, Eigen::Matrix<double, 3, 1>::Zero(), meanacc);
                                     else
@@ -438,6 +451,17 @@ void Task::updateHook()
                                     std::cout<< " Accelerometers Bias Offset:\n"<<myfilter.getAccBias()<<"\n";
                                     std::cout<< " Inclinometers Bias Offset:\n"<<myfilter.getInclBias()<<"\n";
                                     #endif
+
+                                    /** output estimated bias values to a file **/
+                                    char filename[240];
+                                    sprintf (filename, "~/dev/bundles/hdpr/logs/current/imu_estimated_bias.txt");
+                                    std::ofstream bias_estimation;
+                                    bias_estimation.open(filename);
+                                    bias_estimation<< "******** Initial Bias Offset *******"<<"\n";
+                                    bias_estimation<< " Gyroscopes Bias Offset:\n"<<myfilter.getGyroBias()<<"\n";
+                                    bias_estimation<< " Accelerometers Bias Offset:\n"<<myfilter.getAccBias()<<"\n";
+                                    bias_estimation<< " Inclinometers Bias Offset:\n"<<myfilter.getInclBias()<<"\n";
+                                    
                                 }
                                 else
                                 {
