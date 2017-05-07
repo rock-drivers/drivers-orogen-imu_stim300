@@ -65,7 +65,8 @@ bool Task::configureHook()
     imu_stim300_driver->setBaudrate(_baudrate.value());
 
     /** Set the packageTimeout **/
-    imu_stim300_driver->setPackageTimeout(_timeout.value());
+//    imu_stim300_driver->setPackageTimeout(_timeout.value());
+    imu_stim300_driver->setPackageTimeout(0.1);
 
     /** Calculate the sampling frequency **/
     sampling_frequency = 1.0/base::Time::fromSeconds(_timeout.value()).toSeconds();
@@ -249,7 +250,8 @@ bool Task::startHook()
     if (fd_activity)
     {
         fd_activity->watch(imu_stim300_driver->getFileDescriptor());
-	    fd_activity->setTimeout(_timeout * 1000.00);
+//	    fd_activity->setTimeout(_timeout * 1000.00);
+	    fd_activity->setTimeout(0.1 * 1000.00);
     }
 
     return true;
@@ -289,6 +291,7 @@ void Task::updateHook()
 
         /** Package counter incrementation **/
         int64_t packet_counter = imu_stim300_driver->getPacketCounter();
+        _packet_counter.write(packet_counter);
 
         base::Time ts = timestamp_estimator->update(recvts, packet_counter);
         base::Time diffTime = ts - prev_ts;
@@ -454,7 +457,7 @@ void Task::updateHook()
 
                                     /** output estimated bias values to a file **/
                                     char filename[240];
-                                    sprintf (filename, "~/dev/bundles/hdpr/logs/current/imu_estimated_bias.txt");
+                                    sprintf (filename, "/home/hdpr/dev/bundles/hdpr/logs/current/imu_estimated_bias.txt");
                                     std::ofstream bias_estimation;
                                     bias_estimation.open(filename);
                                     bias_estimation<< "******** Initial Bias Offset *******"<<"\n";
