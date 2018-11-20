@@ -457,7 +457,7 @@ void Task::updateHook()
 
                                     /** output estimated bias values to a file **/
                                     char filename[240];
-                                    sprintf (filename, "/home/marta/rock/bundles/rover/logs/imu_estimated_bias.txt");
+                                    sprintf (filename, _bias_estimation_file.value().c_str());
                                     std::ofstream bias_estimation;
                                     bias_estimation.open(filename);
                                     bias_estimation<< "******** Initial Bias Offset *******"<<"\n";

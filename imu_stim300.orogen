@@ -73,6 +73,9 @@ task_context "Task" do
     property('biasgyro','/std/vector<double>').
         doc '3 values of estimated bias. Axis order is X, Y, Z'
 
+    property('bias_estimation_file','/std/string').
+        doc 'filename where to store the estimated bias values.'
+
     #****************************
     #**** Adaptive Properties ***
     #****************************
